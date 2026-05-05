@@ -4,7 +4,7 @@
  * (esm.sh, fonts, MSAL CDN). Auth + Graph API endpoints are network-only.
  * Bump CACHE_NAME below to force clients to re-precache.
  */
-const CACHE_NAME = 'arena-gate-v3';
+const CACHE_NAME = 'arena-gate-v4';
 // Hosts whose responses must NEVER be cached (auth, dynamic data API)
 const NO_CACHE_HOSTS = [
   'login.microsoftonline.com',
@@ -14,7 +14,7 @@ const NO_CACHE_HOSTS = [
 ];
 const PRECACHE_URLS = [
   './',
-  './Arena_Gate_II_Tracker.html',
+  './index.html',
   './manifest.json',
   './icon-180.png',
   './icon-192.png',
@@ -73,7 +73,7 @@ self.addEventListener('fetch', (event) => {
     } catch (err) {
       // Offline + not in cache: return the app shell as a fallback for navigations
       if (req.mode === 'navigate') {
-        const fallback = await cache.match('./Arena_Gate_II_Tracker.html');
+        const fallback = await cache.match('./index.html') || await cache.match('./');
         if (fallback) return fallback;
       }
       throw err;

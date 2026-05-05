@@ -2,7 +2,7 @@
   "name": "DG II Arena · ACMS Tracker",
   "short_name": "Arena",
   "description": "Diriyah Gate II Arena resource planner — schedule, costing, and invoicing.",
-  "start_url": "./Arena_Gate_II_Tracker.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
