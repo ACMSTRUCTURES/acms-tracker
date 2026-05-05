@@ -1411,7 +1411,13 @@ window.ACMS_AUTH_ENABLED = (location.protocol === 'https:');
       authority:   'https://login.microsoftonline.com/' + C.tenantId,
       redirectUri: C.redirectUri,
     },
-    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false },
+    cache: {
+      cacheLocation: 'localStorage',
+      // Cookies as a fallback so a Safari localStorage eviction (after ~7d idle)
+      // doesn't force re-entering your password.
+      storeAuthStateInCookie: true,
+    },
+    system: { iframeHashTimeout: 10000, windowHashTimeout: 60000 },
   });
 
   let _account = null;
