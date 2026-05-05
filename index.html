@@ -1589,6 +1589,37 @@
   .stat-num { font-size: 32px; line-height: 1; letter-spacing: -0.025em; }
   .res-summary-stat .num, .cost-summary-stat .num { font-size: 26px; line-height: 1.05; letter-spacing: -0.02em; }
 
+  /* ============ VIEWER MODE — lock down all edits ============
+     For body[data-acms-role="viewer"]: hide every edit button + make every input readonly.
+     The data is already stripped at load time; this is the UI counterpart so viewers don't
+     see (and accidentally try to use) edit affordances they can't actually action.
+  */
+  body[data-acms-role="viewer"] .project-title-input,
+  body[data-acms-role="viewer"] .project-header input,
+  body[data-acms-role="viewer"] .res-role-card input,
+  body[data-acms-role="viewer"] .res-role-card select {
+    pointer-events: none !important;
+    cursor: default !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    border-bottom-color: transparent !important;
+  }
+  /* Hide all "+Add resource" / "×remove" / pin / vac / salary / link / EXT-INT chips for viewers */
+  body[data-acms-role="viewer"] .res-add,
+  body[data-acms-role="viewer"] .res-row .icon-btn,
+  body[data-acms-role="viewer"] .res-row > div > button {
+    display: none !important;
+  }
+  /* BlackoutEditor (project holidays + per-resource vacations) edit buttons */
+  body[data-acms-role="viewer"] .res-role-card > div > button,
+  body[data-acms-role="viewer"] .res-role-card input[type="date"] {
+    display: none !important;
+  }
+  /* "× remove date" buttons inside chip-style date lists */
+  body[data-acms-role="viewer"] .res-role-card span button {
+    display: none !important;
+  }
+
   /* ============ Affordance pass — make every clickable thing visibly clickable ============ */
 
   /* All buttons get a smooth transition + clear cursor */
