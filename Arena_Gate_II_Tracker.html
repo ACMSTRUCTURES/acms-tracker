@@ -1290,8 +1290,8 @@ window.ACMS_CONFIG = {
 window.ACMS_AUTH_ENABLED = (location.protocol === 'https:');
 </script>
 
-<!-- MSAL.js — Microsoft Authentication Library (browser, ESM-free) -->
-<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"></script>
+<!-- MSAL.js — Microsoft Authentication Library (browser, UMD bundle) -->
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
 
 <script>
 /* ============ ACMS auth + Graph helpers ============
@@ -1299,15 +1299,36 @@ window.ACMS_AUTH_ENABLED = (location.protocol === 'https:');
    window.acmsGraph = { listProjects, loadProject, saveProject, getFolderItem }
 */
 (function () {
+  // Always-available stub (overridden below if MSAL loaded)
+  const stub = (msg) => ({
+    isSignedIn: () => false,
+    getMe: async () => null,
+    signIn:  async () => { throw new Error(msg); },
+    signOut: async () => {},
+  });
+  const stubGraph = (msg) => ({
+    listProjects: async () => { throw new Error(msg); },
+    loadProject:  async () => { throw new Error(msg); },
+    saveProject:  async () => { throw new Error(msg); },
+    createProject: async () => { throw new Error(msg); },
+    getFolderItem: async () => { throw new Error(msg); },
+  });
+
   if (!window.ACMS_AUTH_ENABLED) {
-    // Stub for local development
-    window.acmsAuth  = { signIn:async()=>null, signOut:()=>{}, isSignedIn:()=>false, getMe:async()=>null };
-    window.acmsGraph = { listProjects:async()=>[], loadProject:async()=>null, saveProject:async()=>null, getFolderItem:async()=>null };
+    window.acmsAuth  = { ...stub('local mode'), getMe: async()=>null };
+    window.acmsGraph = stubGraph('local mode');
+    return;
+  }
+  // The CDN bundle exposes its API on window.msal — verify it loaded
+  const msalApi = window.msal && window.msal.PublicClientApplication ? window.msal : null;
+  if (!msalApi) {
+    const errMsg = 'MSAL library failed to load — check your network connection or content blocker.';
+    console.error('[acms]', errMsg);
+    window.acmsAuth  = stub(errMsg);
+    window.acmsGraph = stubGraph(errMsg);
     return;
   }
   const C = window.ACMS_CONFIG;
-  // The CDN bundle exposes its API on window.msal
-  const msalApi = (window.msal && (window.msal.PublicClientApplication ? window.msal : window.msal.default)) || window.msal_browser;
   const pca = new msalApi.PublicClientApplication({
     auth: {
       clientId:    C.clientId,
