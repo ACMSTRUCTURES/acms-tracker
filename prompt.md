@@ -54,22 +54,27 @@ Role detection at sign-in: `window.ACMS_IS_EDITOR`, `window.ACMS_IS_SCHEDULE_EDI
 
 ---
 
-## File layout (deployed)
+## File layout
 
+**Root (deployed via GitHub Pages):**
 ```
-index.html                  ← main app (everything)
-manifest.json               ← PWA manifest
-sw.js                       ← service worker, versioned cache
-icon-180/192/512.png        ← app icons
-.nojekyll                   ← disables Jekyll on GitHub Pages
-README.md                   ← deploy + invite docs
+index.html              ← main app (everything — React, MSAL, scheduler, UI)
+manifest.json           ← PWA manifest
+sw.js                   ← service worker (versioned cache)
+icon-180/192/512.png    ← app icons
+.nojekyll               ← disables Jekyll on GitHub Pages
+README.md               ← deploy + invite docs
+prompt.md               ← this file
 ```
 
-Local-only (in `.gitignore`):
-- `Arena.json` — real project data, lives in OneDrive
-- `Input/` — Excel + extracted JSONs (source data, not deployed)
-- `*.py` — build scripts
-- `check.mjs` — syntax-check helper
+**Local-only (gitignored):**
+```
+ACMS Tracker/           ← OneDrive shared folder (real project JSONs live here)
+│   └── Arena.json
+Input/                  ← Excel sources + extracted intermediate JSONs
+_tools/                 ← local dev scripts (build_arena.py, splice.py, check.mjs, extract.js)
+_archive/               ← legacy + reference (old templates, initial spec, Entra IDs backup)
+```
 
 ---
 

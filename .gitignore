@@ -1,21 +1,28 @@
-# Local tooling — not part of the deployed PWA
-Input/
-build_arena.py
-splice.py
-check.mjs
+# ============ Folders ============
+# Local dev scripts (not part of deployed PWA)
+_tools/
 
-# Editor / OS junk
+# Legacy / reference snapshots — kept local for history
+_archive/
+
+# Excel source data + extracted JSONs (the canonical project data lives in OneDrive)
+Input/
+
+# OneDrive-shared data folder — synced through OneDrive itself, not git
+ACMS Tracker/
+
+# ============ Editor / OS junk ============
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# Older template — keep local, don't deploy
-ACMS_Project_Tracker.html
-
+# ============ Sensitive data ============
 # Real project data — lives in private OneDrive, never commit to public repo
 Arena.json
 *.acms-project.json
+*.pyc
+__pycache__/
 
 # Build artefacts that the build_arena.py script may emit
 *.pyc
