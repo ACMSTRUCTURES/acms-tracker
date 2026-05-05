@@ -1342,10 +1342,25 @@ window.ACMS_AUTH_ENABLED = (location.protocol === 'https:');
   let _folderItem = null; // { driveId, itemId } resolved from shareLink
 
   async function init() {
-    await pca.initialize();
-    const resp = await pca.handleRedirectPromise().catch(()=>null);
-    if (resp && resp.account) _account = resp.account;
-    else if (pca.getAllAccounts().length) _account = pca.getAllAccounts()[0];
+    // iOS Safari sometimes keeps an empty hash from PWA launch — clear it so MSAL
+    // doesn't choke trying to parse a hash that isn't an auth response.
+    try {
+      const h = location.hash || '';
+      const isAuthResponse = h.includes('code=') || h.includes('access_token=') || h.includes('error=');
+      if (h && !isAuthResponse) {
+        history.replaceState(null, document.title, location.pathname + location.search);
+      }
+    } catch (_) {}
+    try { await pca.initialize(); } catch (e) { console.warn('msal init', e); }
+    try {
+      const resp = await pca.handleRedirectPromise();
+      if (resp && resp.account) _account = resp.account;
+    } catch (e) {
+      // Swallow hash_empty_error and similar non-fatal redirect parsing errors —
+      // we use popup auth, not redirect, so missing hashes are expected.
+      if (!String(e).includes('hash_empty_error')) console.warn('msal redirect', e);
+    }
+    if (!_account && pca.getAllAccounts().length) _account = pca.getAllAccounts()[0];
   }
   const initPromise = init();
 
