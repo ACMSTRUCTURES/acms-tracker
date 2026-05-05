@@ -3271,9 +3271,10 @@ function App() {
   const [view, setView] = useState('gantt');
   const [filter, setFilter] = useState('');
   const [groupBy, setGroupBy] = useState('monolith');
-  const [monoFilter, setMonoFilter] = useState('all');
-  const [svcFilter, setSvcFilter] = useState('all');
-  const [ownerFilter, setOwnerFilter] = useState('all');
+  // Multi-select filters — arrays of selected values; empty array = "All"
+  const [monoFilter,  setMonoFilter]  = useState([]);
+  const [svcFilter,   setSvcFilter]   = useState([]);
+  const [ownerFilter, setOwnerFilter] = useState([]);
   const [editing, setEditing] = useState(null);
   const [toast, setToast] = useState('');
   const saveTimer = useRef(null);
@@ -3400,9 +3401,9 @@ function App() {
 
   // Filter (must run before any early return so hook order stays stable)
   const filteredTasks = tasks.filter(t => {
-    if (monoFilter !== 'all' && t.monolith !== monoFilter) return false;
-    if (svcFilter !== 'all' && t.service !== svcFilter) return false;
-    if (ownerFilter !== 'all' && (t.owner || '—') !== ownerFilter) return false;
+    if (monoFilter.length  > 0 && !monoFilter.includes(t.monolith))         return false;
+    if (svcFilter.length   > 0 && !svcFilter.includes(t.service))           return false;
+    if (ownerFilter.length > 0 && !ownerFilter.includes(t.owner || '—'))    return false;
     if (filter) {
       const f = filter.toLowerCase();
       if (!(t.title.toLowerCase().includes(f) ||
@@ -3531,27 +3532,12 @@ function App() {
         )
       ),
       h('div', { className: 'view-bar-spacer' }),
-      (view === 'list' || view === 'gantt') && h('select', {
-        className: 'group-select', value: monoFilter, onChange: e => setMonoFilter(e.target.value),
-        title: 'Filter by Monolith',
-      },
-        h('option', { value: 'all' }, 'Monolith: All'),
-        monolithOptions.map(m => h('option', { key: m, value: m }, m)),
-      ),
-      (view === 'list' || view === 'gantt') && h('select', {
-        className: 'group-select', value: svcFilter, onChange: e => setSvcFilter(e.target.value),
-        title: 'Filter by Service',
-      },
-        h('option', { value: 'all' }, 'Service: All'),
-        serviceOptions.map(s => h('option', { key: s, value: s }, s)),
-      ),
-      (view === 'list' || view === 'gantt') && h('select', {
-        className: 'group-select', value: ownerFilter, onChange: e => setOwnerFilter(e.target.value),
-        title: 'Filter by Owner',
-      },
-        h('option', { value: 'all' }, 'Owner: All'),
-        ownerOptions.map(o => h('option', { key: o, value: o }, o)),
-      ),
+      (view === 'list' || view === 'gantt') && h(MultiPick, {
+        label: 'Monolith', options: monolithOptions, selected: monoFilter, onChange: setMonoFilter }),
+      (view === 'list' || view === 'gantt') && h(MultiPick, {
+        label: 'Service', options: serviceOptions, selected: svcFilter, onChange: setSvcFilter }),
+      (view === 'list' || view === 'gantt') && h(MultiPick, {
+        label: 'Owner', options: ownerOptions, selected: ownerFilter, onChange: setOwnerFilter }),
       (view === 'list' || view === 'gantt') && h('select', {
         className: 'group-select', value: groupBy, onChange: e => setGroupBy(e.target.value),
         title: 'Group by',
@@ -3561,9 +3547,9 @@ function App() {
         h('option', { value: 'service' }, 'Group: Service'),
         h('option', { value: 'owner' }, 'Group: Owner'),
       ),
-      (monoFilter !== 'all' || svcFilter !== 'all' || ownerFilter !== 'all') && h('button', {
+      (monoFilter.length > 0 || svcFilter.length > 0 || ownerFilter.length > 0) && h('button', {
         className: 'btn-ghost btn',
-        onClick: () => { setMonoFilter('all'); setSvcFilter('all'); setOwnerFilter('all'); },
+        onClick: () => { setMonoFilter([]); setSvcFilter([]); setOwnerFilter([]); },
         title: 'Clear all filters',
       }, 'Clear'),
       h('input', { className: 'filter-input', placeholder: 'Filter (monolith, service, owner)…',
@@ -3688,6 +3674,60 @@ function App() {
 }
 
 // ---------- Sub-components ----------
+function MultiPick({ label, options, selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+  const summary = selected.length === 0
+    ? `${label}: All`
+    : (selected.length === 1 ? `${label}: ${selected[0]}` : `${label}: ${selected.length} sel.`);
+  const toggle = (v) => {
+    if (selected.includes(v)) onChange(selected.filter(x => x !== v));
+    else onChange([...selected, v]);
+  };
+  return h('div', { ref, style: { position: 'relative', display: 'inline-block' } },
+    h('button', {
+      type: 'button',
+      className: 'group-select',
+      onClick: () => setOpen(!open),
+      style: { textAlign: 'left', cursor: 'pointer', minWidth: '128px',
+        borderColor: selected.length > 0 ? 'var(--accent)' : undefined,
+        color: selected.length > 0 ? 'var(--accent)' : undefined,
+        fontWeight: selected.length > 0 ? 600 : 500 },
+    }, summary, h('span', { style: { float: 'right', opacity: 0.6, marginLeft: '6px' } }, open ? '▲' : '▼')),
+    open && h('div', { style: {
+      position: 'absolute', top: '100%', left: 0, marginTop: '4px',
+      background: 'var(--paper)', border: '1px solid var(--ink)',
+      boxShadow: 'var(--shadow)', padding: '8px 4px 4px',
+      minWidth: '180px', maxHeight: '320px', overflowY: 'auto', zIndex: 100,
+    }},
+      h('div', { style: { display: 'flex', justifyContent: 'space-between',
+          padding: '0 6px 6px', marginBottom: '4px',
+          borderBottom: '1px dashed var(--rule)',
+          fontFamily: 'var(--mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em' } },
+        h('button', { onClick: () => onChange([]),
+          style: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-mute)', padding: '2px 4px', fontFamily: 'inherit', fontSize: 'inherit' } }, 'Clear'),
+        h('button', { onClick: () => onChange([...options]),
+          style: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: '2px 4px', fontFamily: 'inherit', fontSize: 'inherit' } }, 'All'),
+      ),
+      options.map(opt => h('label', {
+        key: opt,
+        style: { display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '4px 8px', cursor: 'pointer', fontSize: '12px',
+          background: selected.includes(opt) ? 'rgba(200,52,30,0.06)' : 'transparent' },
+      },
+        h('input', { type: 'checkbox', checked: selected.includes(opt), onChange: () => toggle(opt) }),
+        h('span', null, opt)
+      ))
+    )
+  );
+}
+
 function MetaInput({ label, value, onChange, type, w, readOnly }) {
   return h('div', { className: 'meta-block' },
     h('span', { className: 'meta-label' }, label),
@@ -5363,6 +5403,8 @@ function KanbanCard({ task, onDragStart, onDragEnd, onClick, dragging }) {
 
 // ---------- List with grouping ----------
 function ListView({ tasks, groupBy, setEditing, updateTaskOverride }) {
+  const [collapsed, setCollapsed] = useState({});
+  const [allCollapsed, setAllCollapsed] = useState(false);
   const grouped = useMemo(() => {
     if (groupBy === 'none') return [{ key: 'All tasks', items: tasks }];
     const keyFn = (t) => groupBy === 'monolith' ? t.monolith
@@ -5370,11 +5412,23 @@ function ListView({ tasks, groupBy, setEditing, updateTaskOverride }) {
                        : (t.owner || '—');
     const map = new Map();
     for (const t of tasks) { const k = keyFn(t); if (!map.has(k)) map.set(k, []); map.get(k).push(t); }
-    // monolith natural order; otherwise alphabetic
     return Array.from(map.entries()).map(([key, items]) => ({ key, items }));
   }, [tasks, groupBy]);
 
-  return h('div', { className: 'list-wrap' },
+  const isCollapsed = (k) => !!collapsed[k];
+  const toggle = (k) => setCollapsed(c => ({ ...c, [k]: !c[k] }));
+  const collapseAll = () => { const m = {}; grouped.forEach(g => m[g.key] = true); setCollapsed(m); setAllCollapsed(true); };
+  const expandAll = () => { setCollapsed({}); setAllCollapsed(false); };
+
+  return h('div', null,
+    groupBy !== 'none' && h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '8px',
+        fontFamily: 'var(--mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.14em' } },
+      h('button', { className: 'btn btn-ghost', style: { padding: '4px 10px', fontSize: '10px' },
+        onClick: expandAll, title: 'Expand all groups' }, '▼ Expand all'),
+      h('button', { className: 'btn btn-ghost', style: { padding: '4px 10px', fontSize: '10px' },
+        onClick: collapseAll, title: 'Collapse all groups' }, '▶ Collapse all'),
+    ),
+    h('div', { className: 'list-wrap' },
     h('table', null,
       h('thead', null, h('tr', null,
         h('th', null, 'Task'),
@@ -5388,13 +5442,24 @@ function ListView({ tasks, groupBy, setEditing, updateTaskOverride }) {
         h('th', null, 'Progress'),
       )),
       h('tbody', null,
-        grouped.flatMap(g => [
-          groupBy !== 'none' && h('tr', { key: 'g_'+g.key, className: 'group-row' },
-            h('td', { colSpan: 9 }, `${g.key} — ${g.items.length} task${g.items.length===1?'':'s'} · ${g.items.reduce((a,t)=>a+(t.hours||0),0).toFixed(1)} hrs`)
-          ),
-          ...g.items.map(t => {
+        grouped.flatMap(g => {
+          const groupTotalHrs = g.items.reduce((a,t) => a + (t.hours || 0), 0);
+          const cells = [];
+          if (groupBy !== 'none') {
+            const isCol = isCollapsed(g.key);
+            cells.push(h('tr', { key: 'g_'+g.key, className: 'group-row',
+              onClick: () => toggle(g.key),
+              style: { cursor: 'pointer' } },
+              h('td', { colSpan: 9 },
+                h('span', { style: { color: 'var(--accent)', marginRight: '8px', display: 'inline-block', width: '12px' } }, isCol ? '▶' : '▼'),
+                `${g.key} — ${g.items.length} task${g.items.length===1?'':'s'} · ${groupTotalHrs.toFixed(1)} hrs`
+              )
+            ));
+            if (isCol) return cells; // skip rendering items
+          }
+          for (const t of g.items) {
             const s = STATUS_MAP[t.status]; const overdue = isOverdue(t);
-            return h('tr', { key: t.id },
+            cells.push(h('tr', { key: t.id },
               h('td', { onClick: () => setEditing(t), style: { cursor:'pointer', fontWeight:500 } }, t.title),
               h('td', { style: { fontFamily: 'var(--mono)', fontSize: '11px' } }, t.monolith),
               h('td', { style: { fontFamily: 'var(--mono)', fontSize: '11px' } }, t.service),
@@ -5413,11 +5478,13 @@ function ListView({ tasks, groupBy, setEditing, updateTaskOverride }) {
                 )
               ),
               h('td', null, h(InlineProgress, { value: t.progress, onChange: v => updateTaskOverride && updateTaskOverride(t.id, { progress: v }) })),
-            );
-          })
-        ].filter(Boolean))
+            ));
+          }
+          return cells;
+        })
       )
     )
+    )  // close .list-wrap div
   );
 }
 function InlineProgress({ value, onChange }) {
