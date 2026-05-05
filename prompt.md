@@ -90,13 +90,43 @@ Not yet invited: Batoul (external draftsman), Ali (BIM+PM), Resident Engineer.
 
 ## Pending work (in order of priority)
 
-1. **Test schedule editor mode** with one of the engineers (Nour / Mohamad / Ibrahim / Alaa). They should sign in and see a cyan `SCHEDULE EDITOR` badge, only Gantt/List/Kanban/Calendar tabs, and be able to edit task progress + drag Gantt bars.
+### 1. Add new projects from inside the app *(must-have)*
 
-2. **Fix `NaN%` bug** in the feasibility banner role chips (top of page, e.g. `DM 1 · NaN%`). For viewers / schedule editors, role rate is stripped → utilization calc divides by undefined. Either omit the chips for non-editors or compute using hours capacity only.
+Currently to add a new project I copy `Arena.json` in OneDrive, rename, edit. Want:
 
-3. **"+ New Project" button in the picker.** Currently to add a new project I copy `Arena.json` in OneDrive, rename, edit. Should be a one-click "Duplicate from current" that drops a new JSON in the folder.
+- **`+ New Project` button** in the project picker (visible only to the editor).
+- Click → prompt for project name + optional template ("Empty / Copy from current / Arena-shape with different monoliths").
+- App writes a new `<Name>.json` to the OneDrive `ACMS Tracker` folder via Graph API (`createProject` already exists in `window.acmsGraph`).
+- New project appears in everyone's picker on next refresh.
+- The JSON should let projects vary on **scope** — different role lists, different services, different deliverables (use the existing `schema.roles` / `schema.services` / `schema.tabs` arrays). For non-Arena-shape projects (FRP, lab tests, etc.), the editor should be able to choose which roles + tabs apply.
 
-4. **Invite remaining team** — Batoul (external), Ali (BIM+PM), Resident Engineer if real. Decide which need access.
+### 2. Editor-only "Activity Dashboard" on the main page *(must-have)*
+
+A dashboard showing **per-employee status** so I (Ali, editor) can see at a glance:
+
+- Each employee + role
+- Active (in progress) tasks they're working on, with monolith + service
+- Tasks they completed today / this week
+- Tasks blocked or overdue
+- Hours logged vs hours assigned
+- Any tasks they've manually moved (Gantt drag) since last review
+- Quick filter: "show only employees with overdue tasks", "show only active work today"
+
+**Visibility:** only when signed in as `ali.jibawy@acmstructures.com` (gate by `window.ACMS_IS_EDITOR`). Hide tab + strip data for everyone else. Could be a new top-level tab (e.g. between Gantt and List) or a separate "Dashboard" tab pinned to the front.
+
+Source data: read from `state.tasks` (already computed) + `state.overrides` (which the schedule editors are writing). Aggregate by `task.owner` / `task.ownerId`.
+
+### 3. Fix `NaN%` bug
+
+In the feasibility banner role chips (top of page, e.g. `DM 1 · NaN%`). For viewers / schedule editors, role rate is stripped → utilization calc divides by undefined. Either omit the chips for non-editors or compute using hours capacity only.
+
+### 4. Invite remaining team
+
+Batoul (external), Ali (BIM+PM, his own access), Resident Engineer if real. Decide which need access.
+
+### 5. Test schedule editor mode
+
+With one of the engineers (Nour / Mohamad / Ibrahim / Alaa) — confirm cyan badge, restricted tabs, edit access works on Gantt drag + List inline progress.
 
 ---
 
