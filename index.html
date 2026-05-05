@@ -1588,6 +1588,120 @@
   /* Ensure all headings + numbers are tight */
   .stat-num { font-size: 32px; line-height: 1; letter-spacing: -0.025em; }
   .res-summary-stat .num, .cost-summary-stat .num { font-size: 26px; line-height: 1.05; letter-spacing: -0.02em; }
+
+  /* ============ Affordance pass — make every clickable thing visibly clickable ============ */
+
+  /* All buttons get a smooth transition + clear cursor */
+  button { transition: background 0.14s, color 0.14s, border-color 0.14s, box-shadow 0.14s, transform 0.1s; }
+  button:not(:disabled) { cursor: pointer; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ----- View tabs ----- */
+  .view-tabs { gap: 0; padding: 2px; background: var(--bg); border: 1px solid var(--rule); border-radius: 4px; }
+  .view-tab {
+    border: none !important;
+    margin: 0 !important;
+    padding: 8px 16px !important;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--ink-mute);
+    background: transparent;
+    border-radius: 3px !important;
+    position: relative;
+    transition: color 0.12s, background 0.12s;
+  }
+  .view-tab:hover {
+    color: var(--ink) !important;
+    background: var(--paper) !important;
+    box-shadow: inset 0 -2px 0 var(--accent) !important;
+  }
+  .view-tab.active {
+    background: var(--ink) !important;
+    color: var(--paper) !important;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.12) !important;
+  }
+
+  /* ----- Generic buttons (.btn) — clearer raised state ----- */
+  .btn { box-shadow: 0 1px 0 rgba(0,0,0,0.04); cursor: pointer; }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 4px 10px rgba(0,0,0,0.12); }
+  .btn:active { transform: translateY(0); box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
+  .btn-primary { box-shadow: 0 1px 0 rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.08); }
+  .btn-primary:hover { box-shadow: 0 1px 0 rgba(0,0,0,0.08), 0 6px 14px rgba(200,52,30,0.22); }
+
+  /* ----- Filter / select — clearer focus ring ----- */
+  .filter-input, .group-select {
+    box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .filter-input:hover, .group-select:hover { border-color: var(--ink-soft); }
+  .filter-input:focus, .group-select:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(200,52,30,0.12) !important;
+  }
+  select.group-select { cursor: pointer; }
+
+  /* ----- Sortable column headers — hover underline ----- */
+  th { transition: color 0.12s, background 0.12s; cursor: pointer; }
+  th:hover {
+    color: var(--ink) !important;
+    background: rgba(0,0,0,0.03);
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  /* ----- Clickable cells (task title, monolith name etc.) — hover underline ----- */
+  td[onclick], td[style*="cursor: pointer"], td[style*="cursor:pointer"] {
+    position: relative;
+    transition: color 0.12s;
+  }
+  td[onclick]:hover, td[style*="cursor: pointer"]:hover, td[style*="cursor:pointer"]:hover {
+    color: var(--accent) !important;
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-underline-offset: 3px;
+  }
+
+  /* ----- Kanban cards — already lift, add cursor + clearer border-on-hover ----- */
+  .card { cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s, transform 0.1s; }
+  .card:hover {
+    border-color: var(--ink) !important;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 8px 18px rgba(0,0,0,0.1);
+  }
+
+  /* ----- Gantt bars — clearer interaction ----- */
+  .gantt-bar { cursor: grab; transition: filter 0.12s, transform 0.1s, box-shadow 0.12s; }
+  .gantt-bar:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.18), 0 6px 14px rgba(0,0,0,0.12) !important;
+  }
+  .gantt-bar:active { cursor: grabbing; transform: translateY(0); }
+
+  /* ----- Calendar tasks — clickable indicator ----- */
+  .cal-task { cursor: pointer; transition: filter 0.12s, transform 0.1s; }
+  .cal-task:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+  /* ----- Resource row inputs (name, rates) — show subtle border on hover ----- */
+  .res-name-input, .res-num-input { transition: border-bottom-color 0.12s, background 0.12s; }
+  .res-name-input:hover, .res-num-input:hover { border-bottom: 1px dotted var(--ink-mute); }
+
+  /* ----- Icon buttons (× delete, ✎ edit etc.) — clear hover ----- */
+  .icon-btn { cursor: pointer; transition: color 0.12s, background 0.12s; }
+  .icon-btn:hover { background: rgba(200,52,30,0.08); color: var(--accent); }
+
+  /* ----- Empty + add-task buttons in kanban columns ----- */
+  .add-task { cursor: pointer; transition: all 0.12s; }
+  .add-task:hover { background: var(--paper); }
+
+  /* ----- Modal close + save buttons get extra emphasis ----- */
+  .modal-foot .btn-primary { font-weight: 700; }
+
+  /* ----- Brand mark in topbar is clickable to "home" feel — add cursor for future use ----- */
+  .brand { cursor: default; }
+
+  /* ----- Date inputs across the app ----- */
+  input[type="date"] { cursor: pointer; }
+  input[type="date"]:hover { border-color: var(--ink-soft); }
 </style>
 </head>
 <body>
