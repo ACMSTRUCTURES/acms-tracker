@@ -1722,6 +1722,15 @@ window.ACMS_CONFIG = {
   clientId:    '386f3712-51c9-4264-a5e1-6776882fdeea',
   redirectUri: 'https://acmstructures.github.io/acms-tracker/',
   editorEmail: 'ali.jibawy@acmstructures.com',
+  // Schedule editors — can edit task status / progress / dates (Kanban, List, Gantt, Calendar tabs)
+  // but can NOT see costing or edit resources / project header / monoliths.
+  // Add @acmstructures.com emails here (lowercase). Empty = no schedule editors.
+  scheduleEditors: [
+    // 'nour@acmstructures.com',
+    // 'mohamad@acmstructures.com',
+    // 'ibrahim@acmstructures.com',
+    // 'alaa@acmstructures.com',
+  ],
   // Share link to the OneDrive folder containing the project JSON files
   shareLink:   'https://acmstructures-my.sharepoint.com/:f:/p/ali_jibawy/IgBHLhm1dpsrSY5p2uhB966WAfoucTb40tc67-qygV8WlTk?e=f9VRI7',
   scopes:      ['User.Read', 'Files.ReadWrite', 'Files.ReadWrite.All'],
@@ -2931,18 +2940,27 @@ async function loadState() {
 async function saveState(state) {
   const json = JSON.stringify(state);
   const proj = window.ACMS_CURRENT_PROJECT;
-  // 1) Save to OneDrive if a project is selected and the user is the editor
-  if (proj && window.acmsGraph && window.ACMS_AUTH_ENABLED && window.ACMS_IS_EDITOR) {
-    try {
-      await window.acmsGraph.saveProject(proj.fileId, state);
-    } catch (e) {
-      console.warn('graph save failed (offline?). Cached locally.', e);
+  if (proj && window.acmsGraph && window.ACMS_AUTH_ENABLED) {
+    if (window.ACMS_IS_EDITOR) {
+      // Full editor — save the entire state
+      try { await window.acmsGraph.saveProject(proj.fileId, state); }
+      catch (e) { console.warn('graph save failed (offline?). Cached locally.', e); }
+    } else if (window.ACMS_IS_SCHEDULE_EDITOR) {
+      // Schedule editor — re-fetch canonical state and merge ONLY task overrides.
+      // This protects resources / costing / project header from accidental overwrites.
+      try {
+        const canonical = await window.acmsGraph.loadProject(proj.fileId);
+        canonical.overrides = state.overrides || {};
+        canonical.lastModified = new Date().toISOString();
+        await window.acmsGraph.saveProject(proj.fileId, canonical);
+      } catch (e) { console.warn('graph schedule-save failed.', e); }
+    } else {
+      // Viewer — no remote save; local cache only
     }
-    // Always cache locally so we can read back offline
     try { if (window.idbSet) await window.idbSet('proj:' + proj.fileId, json); } catch (_) {}
     return;
   }
-  // 2) Local-only save (no project selected, or viewer mode)
+  // Local-only save (no project selected, or viewer mode without auth)
   try { if (window.idbSet) await window.idbSet(STORAGE_KEY, json); } catch (e) { console.error('idb save fail', e); }
   try { localStorage.setItem(STORAGE_KEY, json); } catch (_) {}
   try { if (typeof window.storage !== 'undefined') await window.storage.set('arena_gate_state', json, true); } catch (_) {}
@@ -3417,7 +3435,17 @@ function App() {
     h(FeasibilityBanner, { state, setState, showToast }),
     h('div', { className: 'view-bar' },
       h('div', { className: 'view-tabs' },
-        ['gantt','list','kanban','calendar','panels','resources','costing'].filter(v => !(v === 'costing' && state.hideCosting)).map(v =>
+        (() => {
+          const all = ['gantt','list','kanban','calendar','panels','resources','costing'];
+          // Schedule editors (and below) can only see schedule-related tabs
+          const isFullEditor = window.ACMS_IS_EDITOR === true;
+          const isScheduleEditor = window.ACMS_IS_SCHEDULE_EDITOR === true && !isFullEditor;
+          return all.filter(v => {
+            if (v === 'costing' && state.hideCosting) return false;
+            if (isScheduleEditor && (v === 'panels' || v === 'resources' || v === 'costing')) return false;
+            return true;
+          });
+        })().map(v =>
           h('button', { key: v, className: 'view-tab' + (view === v ? ' active' : ''),
             onClick: () => setView(v) }, v)
         )
@@ -5704,7 +5732,10 @@ function GateScreen({ onReady }) {
   const open = async (file) => {
     setPhase('loading');
     window.ACMS_CURRENT_PROJECT = { fileId: file.id, fileName: file.name };
-    window.ACMS_IS_EDITOR = !!user && user.email === (window.ACMS_CONFIG.editorEmail || '').toLowerCase();
+    const ed = (window.ACMS_CONFIG.editorEmail || '').toLowerCase();
+    const sched = (window.ACMS_CONFIG.scheduleEditors || []).map(s => (s || '').toLowerCase());
+    window.ACMS_IS_EDITOR          = !!user && user.email === ed;
+    window.ACMS_IS_SCHEDULE_EDITOR = !!user && (user.email === ed || sched.includes(user.email));
     onReady();
   };
 
@@ -5729,13 +5760,16 @@ function GateScreen({ onReady }) {
     );
   }
   // phase === 'picker'
-  const isEditor = !!user && user.email === (window.ACMS_CONFIG.editorEmail || '').toLowerCase();
+  const ed = (window.ACMS_CONFIG.editorEmail || '').toLowerCase();
+  const sched = (window.ACMS_CONFIG.scheduleEditors || []).map(s => (s || '').toLowerCase());
+  const isEditor = !!user && user.email === ed;
+  const isScheduleEditor = !!user && (user.email === ed || sched.includes(user.email));
+  const roleLabel = isEditor ? 'EDITOR' : (isScheduleEditor ? 'SCHEDULE EDITOR' : 'VIEWER (read-only)');
   return h('div', { style: wrap },
     h('div', { style: { display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'16px' } },
       h('div', null,
         h('div', { className: 'brand-mark', style: { fontSize: '24px' } }, 'ACMS Tracker'),
-        h('div', { className: 'brand-sub' }, 'Pick a project · ' + user.email +
-          (isEditor ? ' · EDITOR' : ' · VIEWER (read-only)'))
+        h('div', { className: 'brand-sub' }, 'Pick a project · ' + user.email + ' · ' + roleLabel)
       ),
       h('button', { className: 'btn btn-ghost', style: { fontSize:'10px', padding:'5px 10px' },
         onClick: async () => { await window.acmsAuth.signOut(); location.reload(); } }, 'Sign out')
