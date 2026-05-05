@@ -3287,6 +3287,10 @@ function App() {
   useEffect(() => {
     if (!state) return;
     document.body.classList.toggle('hide-costing', !!state.hideCosting);
+    // Tag body with the active role so CSS / DevTools can verify what role rendered
+    document.body.dataset.acmsRole = window.ACMS_IS_EDITOR ? 'editor'
+      : window.ACMS_IS_SCHEDULE_EDITOR ? 'schedule'
+      : window.ACMS_AUTH_ENABLED ? 'viewer' : 'local';
   }, [state && state.hideCosting]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2200); };
@@ -3533,19 +3537,20 @@ function App() {
       }, 'Clear'),
       h('input', { className: 'filter-input', placeholder: 'Filter (monolith, service, owner)…',
         value: filter, onChange: e => setFilter(e.target.value) }),
-      h('button', {
+      // Hide-costing toggle is editor-only (viewers/schedule editors can't see costs anyway)
+      window.ACMS_IS_EDITOR && h('button', {
         className: 'btn-ghost btn',
         title: state.hideCosting ? 'Show all financial data' : 'Hide all financial / cost data',
         onClick: () => setState(s => {
           const next = !s.hideCosting;
-          // If we're on the costing tab and hiding it, jump back to gantt
           if (next && view === 'costing') setView('gantt');
           return { ...s, hideCosting: next };
         }),
         style: state.hideCosting ? { borderColor: 'var(--accent)', color: 'var(--accent)' } : {},
       }, state.hideCosting ? '$ Show costing' : '$ Hide costing'),
       // Scenarios: save current state as a named scenario, or load/delete existing
-      h('select', {
+      // Editor-only: scenarios dropdown
+      window.ACMS_IS_EDITOR && h('select', {
         className: 'group-select',
         value: '',
         title: 'Save / load / delete scenarios',
@@ -3613,9 +3618,11 @@ function App() {
           ),
         ] : []),
       ),
-      h('button', { className: 'btn-ghost btn', onClick: exportCSV }, 'CSV'),
-      h('button', { className: 'btn-ghost btn', onClick: exportJSON }, 'JSON'),
-      h('button', { className: 'btn-ghost btn', title: 'Clear manually-shifted Gantt bars',
+      // Editor-only: full export of state
+      window.ACMS_IS_EDITOR && h('button', { className: 'btn-ghost btn', onClick: exportCSV }, 'CSV'),
+      window.ACMS_IS_EDITOR && h('button', { className: 'btn-ghost btn', onClick: exportJSON }, 'JSON'),
+      // Schedule editor + editor: clear manually-shifted bars
+      (window.ACMS_IS_EDITOR || window.ACMS_IS_SCHEDULE_EDITOR) && h('button', { className: 'btn-ghost btn', title: 'Clear manually-shifted Gantt bars',
         onClick: () => {
           if (!confirm('Clear all manually-shifted bars? Auto-schedule will be restored.')) return;
           setState(s => {
@@ -3628,7 +3635,8 @@ function App() {
           showToast('Shifts cleared');
         }
       }, 'Clear shifts'),
-      h('button', { className: 'btn-ghost btn', onClick: resetAll }, 'Reset')
+      // Editor-only: reset everything
+      window.ACMS_IS_EDITOR && h('button', { className: 'btn-ghost btn', onClick: resetAll }, 'Reset')
     ),
     h('div', { className: 'workspace' },
       view === 'kanban'    ? h(KanbanView,    { tasks: filteredTasks, updateTask: updateTaskOverride, setEditing })
