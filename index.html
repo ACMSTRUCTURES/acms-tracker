@@ -3368,7 +3368,30 @@ function App() {
         h('div', { className: 'brand-sub' }, 'Resource Planner · Shared')
       ),
       h('div', { className: 'topbar-spacer' }),
-      h('div', { className: 'meta-pill' }, h('span', { className: 'dot' }), 'Schedule auto-rebuilt')
+      h('div', { className: 'meta-pill' }, h('span', { className: 'dot' }), 'Schedule auto-rebuilt'),
+      // Project switcher — back to picker
+      window.ACMS_AUTH_ENABLED && h('button', {
+        className: 'btn btn-ghost',
+        style: { fontSize: '10px', padding: '6px 12px' },
+        title: 'Switch to a different project',
+        onClick: () => {
+          window.ACMS_CURRENT_PROJECT = null;
+          location.reload();
+        },
+      }, '⇄ Projects'),
+      // Signed-in user + sign out
+      window.ACMS_AUTH_ENABLED && h('button', {
+        className: 'btn btn-ghost',
+        style: { fontSize: '10px', padding: '6px 12px' },
+        title: 'Sign out — clears your Microsoft session in this browser',
+        onClick: async () => {
+          if (!confirm('Sign out of the app?')) return;
+          try { await window.acmsAuth.signOut(); } catch (_) {}
+          window.ACMS_CURRENT_PROJECT = null;
+          window.ACMS_IS_EDITOR = false;
+          location.reload();
+        },
+      }, '↪ Sign out')
     ),
     h('div', { className: 'project-header' },
       h('div', null,
