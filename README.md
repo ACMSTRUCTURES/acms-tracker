@@ -1,72 +1,95 @@
-# DG II Arena · ACMS Tracker
+# ACMS Tracker · DG II Arena
 
-Single-file React app, packaged as a Progressive Web App. No build step — plain HTML / CSS / JS plus React 18 via `esm.sh`.
+Single-file React PWA. Microsoft 365 sign-in. Project data lives in OneDrive as JSON files. iOS / Android / Mac / PC compatible.
 
-## Files
+## Architecture
+
+```
+acmstructures.github.io/acms-tracker/   ← the engine (PWA, public)
+                │
+                │  Microsoft sign-in (MSAL.js)
+                │  reads/writes JSON via Graph API
+                ▼
+OneDrive: ACMS Tracker /
+├── Arena.json              ← Diriyah Gate II Arena
+├── <future-project>.json
+└── ...
+```
+
+- **The HTML is the engine** — one app, never changes per project.
+- **Each project = a JSON file** in the shared OneDrive folder.
+- **Editor** (`ali.jibawy@acmstructures.com`) sees full UI, can edit, saves write back to OneDrive.
+- **Viewers** (anyone else with folder access) sees read-only UI; **all costing data is stripped server-side** before reaching their browser.
+
+## Files in this repo
 
 | File | Purpose |
 |---|---|
-| `Arena_Gate_II_Tracker.html` | Main app (resource planner, costing, invoicing). |
-| `Arena_Gate_II_Tracker_NoCosting.html` | Same app with all financial data hidden. |
+| `Arena_Gate_II_Tracker.html` | The PWA. |
+| `Arena_Gate_II_Tracker_NoCosting.html` | Costing-hidden static copy (legacy; the new viewer mode handles this dynamically). |
 | `manifest.json` | PWA manifest. |
-| `sw.js` | Service worker — versioned cache, offline-capable. |
-| `icon-180.png` / `icon-192.png` / `icon-512.png` | App icons. |
+| `sw.js` | Service worker — cache-first for app shell, network-only for auth/Graph. |
+| `icon-180.png` `icon-192.png` `icon-512.png` | App icons (cyan ▶ on dark). |
+| `Arena.json` | Initial project data. **Upload to your OneDrive `ACMS Tracker` folder once.** |
 
-`Input/`, `*.py`, `check.mjs`, `ACMS_Project_Tracker.html` are local tooling and are excluded from deploy via `.gitignore`.
+`Input/`, `*.py`, `check.mjs`, `ACMS_Project_Tracker.html`, `CLAUDE*.md` are local tooling — excluded by `.gitignore`.
 
-## Local preview
+## First-time deploy
 
-Open `Arena_Gate_II_Tracker.html` directly in any modern browser. The first load needs internet (React + Google Fonts pull from CDN); after that the service worker caches everything for offline use.
+### 1. Push to GitHub Pages
 
-## Deploy to GitHub Pages
-
-1. Create a new public repo (e.g. `arena-tracker`) on GitHub.
-
-2. From this folder:
-
-   ```sh
-   git remote add origin https://github.com/<your-user>/arena-tracker.git
-   git push -u origin main
-   ```
-
-3. On GitHub: **Settings → Pages → Source = "Deploy from a branch" → Branch: `main`, folder: `/ (root)` → Save.**
-
-4. Wait ~1 minute. Your app is live at:
-
-   ```
-   https://<your-user>.github.io/arena-tracker/Arena_Gate_II_Tracker.html
-   ```
-
-> The PWA needs HTTPS — GitHub Pages provides this automatically.
-
-## Add to iPhone home screen
-
-1. Open the Pages URL in **Safari** on your iPhone.
-2. Tap the **Share** button → **Add to Home Screen**.
-3. Confirm the title (defaults to "Arena") → Add.
-
-The icon appears on your home screen. Tap it — the app opens fullscreen, no browser chrome, with offline support.
-
-> First-time install needs internet so the service worker can cache React + fonts. Subsequent launches work offline.
-
-## Updating after a code change
-
-Bump the cache version in `sw.js`:
-
-```js
-const CACHE_NAME = 'arena-gate-v2';   // was v1
+```sh
+git push -u origin main
 ```
 
-Commit + push. iPhones will pick up the new bundle on next launch (the SW activates the new cache and drops the old).
+Then on github.com → Settings → Pages → Source = `main` branch / root → Save. URL becomes `https://acmstructures.github.io/acms-tracker/`.
 
-If a clean reset is needed on a device, in Safari: **Settings → Safari → Advanced → Website Data → search "github.io" → Remove**, or just delete and re-add the home-screen icon.
+### 2. Upload `Arena.json` to OneDrive
 
-## Data persistence
+Open your `ACMS Tracker` folder in OneDrive. Drag `Arena.json` into it. That's the only project file the app will see on day one. (To add more projects later, just drop more JSONs in the same folder.)
 
-The app uses **IndexedDB** as the canonical store (key `acms_arena_gate_v2`), with localStorage as a one-time migration source for older saves. iOS Safari evicts localStorage after ~7 days of inactivity, but IndexedDB survives. Every save also mirrors to localStorage for best-effort fast reloads.
+### 3. Test from your laptop
 
-Export your data anytime via the **JSON** button in the view bar. Re-import is manual (paste back via DevTools `idbSet('acms_arena_gate_v2', '<json>')`).
+Open `https://acmstructures.github.io/acms-tracker/Arena_Gate_II_Tracker.html`. Sign in with `ali.jibawy@acmstructures.com`. The project picker shows `Arena.json`. Tap it → the app loads. You're in editor mode.
 
-## Browser compatibility
+### 4. Add to phones / desktops
 
-Tested working on iOS Safari 16+, desktop Chrome / Firefox / Safari. Drag-to-move on the Gantt uses mouse events; touch falls back to tap (which opens the modal — tap a bar to edit dates manually).
+- **iPhone:** Safari → URL → Share → Add to Home Screen → tap icon → sign in.
+- **Mac Safari:** File → Add to Dock.
+- **Chrome/Edge (desktop):** install icon in address bar.
+- **Android Chrome:** menu → Install app.
+
+### 5. Invite the 9 viewers
+
+- In OneDrive, share the `ACMS Tracker` folder with each person's `@acmstructures.com` email — **Can view** is sufficient.
+- Send them the GitHub Pages URL.
+- They install on their device, sign in with their own ACMS Microsoft account → see read-only Arena project, no costing tab, no salary fields.
+
+## Adding a new project
+
+**On PC:**
+
+1. In OneDrive, copy `Arena.json` → rename to `NewProject.json` (or whatever).
+2. Open the app on PC → reload. `NewProject.json` appears in the picker.
+3. Open it → fill in monoliths/dates/hours via the existing UI → auto-saves back to OneDrive.
+
+For a wildly different project type (FRP, lab testing, etc.), open the JSON in VS Code and edit the `schema.roles` and `schema.services` arrays — the engine reads these to know which roles to schedule.
+
+## Updating the app code
+
+Edit `Arena_Gate_II_Tracker.html` locally, bump the cache version in `sw.js` (`v2` → `v3`), commit, push. Devices pick up the new version on next launch.
+
+## Local development (no auth)
+
+Open `Arena_Gate_II_Tracker.html` directly via `file://` or a local web server. The auth gate is disabled on non-HTTPS origins; the app falls back to embedded data + IndexedDB. Useful for quick iteration without signing in.
+
+## Tenant config (already baked in)
+
+```
+Tenant ID:   772308f0-707a-45b1-842f-e688a990b0ed
+Client ID:   386f3712-51c9-4264-a5e1-6776882fdeea
+Editor:      ali.jibawy@acmstructures.com
+Folder:      <ACMSTRUCTURES OneDrive> /ACMS Tracker/
+```
+
+Change these in the `<script>` block at the top of `Arena_Gate_II_Tracker.html` if you ever migrate tenant or transfer editor rights.

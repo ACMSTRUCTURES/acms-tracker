@@ -1268,6 +1268,161 @@
 <div id="root"></div>
 <div id="err" style="position:fixed;top:0;left:0;right:0;background:#c8341e;color:white;padding:12px;font-family:monospace;font-size:12px;white-space:pre-wrap;z-index:9999;display:none;"></div>
 
+<!--
+  ============ ACMS Tracker — Microsoft 365 + OneDrive auth ============
+  When deployed (HTTPS, redirect URI matches Entra app), users sign in with their
+  ACMSTRUCTURES Microsoft account and the app reads/writes project JSON files
+  from a shared OneDrive folder. When opened locally (file://) auth is bypassed
+  and the app falls back to embedded data + IndexedDB for offline development.
+  ====================================================================
+-->
+<script>
+window.ACMS_CONFIG = {
+  tenantId:    '772308f0-707a-45b1-842f-e688a990b0ed',
+  clientId:    '386f3712-51c9-4264-a5e1-6776882fdeea',
+  redirectUri: 'https://acmstructures.github.io/acms-tracker/',
+  editorEmail: 'ali.jibawy@acmstructures.com',
+  // Share link to the OneDrive folder containing the project JSON files
+  shareLink:   'https://acmstructures-my.sharepoint.com/:f:/p/ali_jibawy/IgBHLhm1dpsrSY5p2uhB966WAfoucTb40tc67-qygV8WlTk?e=f9VRI7',
+  scopes:      ['User.Read', 'Files.ReadWrite', 'Files.ReadWrite.All'],
+};
+// Auth is enabled only on HTTPS (deployed) — file:// or http://localhost run in offline/local mode.
+window.ACMS_AUTH_ENABLED = (location.protocol === 'https:');
+</script>
+
+<!-- MSAL.js — Microsoft Authentication Library (browser, ESM-free) -->
+<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"></script>
+
+<script>
+/* ============ ACMS auth + Graph helpers ============
+   window.acmsAuth = { signIn, signOut, isSignedIn, getMe }
+   window.acmsGraph = { listProjects, loadProject, saveProject, getFolderItem }
+*/
+(function () {
+  if (!window.ACMS_AUTH_ENABLED) {
+    // Stub for local development
+    window.acmsAuth  = { signIn:async()=>null, signOut:()=>{}, isSignedIn:()=>false, getMe:async()=>null };
+    window.acmsGraph = { listProjects:async()=>[], loadProject:async()=>null, saveProject:async()=>null, getFolderItem:async()=>null };
+    return;
+  }
+  const C = window.ACMS_CONFIG;
+  // The CDN bundle exposes its API on window.msal
+  const msalApi = (window.msal && (window.msal.PublicClientApplication ? window.msal : window.msal.default)) || window.msal_browser;
+  const pca = new msalApi.PublicClientApplication({
+    auth: {
+      clientId:    C.clientId,
+      authority:   'https://login.microsoftonline.com/' + C.tenantId,
+      redirectUri: C.redirectUri,
+    },
+    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false },
+  });
+
+  let _account = null;
+  let _folderItem = null; // { driveId, itemId } resolved from shareLink
+
+  async function init() {
+    await pca.initialize();
+    const resp = await pca.handleRedirectPromise().catch(()=>null);
+    if (resp && resp.account) _account = resp.account;
+    else if (pca.getAllAccounts().length) _account = pca.getAllAccounts()[0];
+  }
+  const initPromise = init();
+
+  async function getToken() {
+    await initPromise;
+    if (!_account) throw new Error('not-signed-in');
+    try {
+      const r = await pca.acquireTokenSilent({ account: _account, scopes: C.scopes });
+      return r.accessToken;
+    } catch (e) {
+      const r = await pca.acquireTokenPopup({ scopes: C.scopes });
+      _account = r.account;
+      return r.accessToken;
+    }
+  }
+
+  async function graph(path, opts) {
+    const token = await getToken();
+    const url = path.startsWith('http') ? path : ('https://graph.microsoft.com/v1.0' + path);
+    const init = { ...(opts||{}), headers: { ...(opts && opts.headers || {}), Authorization: 'Bearer ' + token } };
+    const resp = await fetch(url, init);
+    if (!resp.ok) throw new Error('graph ' + resp.status + ' ' + (await resp.text()).slice(0,300));
+    if (resp.status === 204) return null;
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return resp.json();
+    return resp.text();
+  }
+
+  // Encode share URL for Graph /shares/{id} call
+  function encodeShareUrl(u) {
+    const b64 = btoa(unescape(encodeURIComponent(u))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
+    return 'u!' + b64;
+  }
+
+  async function getFolderItem() {
+    if (_folderItem) return _folderItem;
+    const id = encodeShareUrl(C.shareLink);
+    const item = await graph('/shares/' + id + '/driveItem');
+    _folderItem = { driveId: item.parentReference.driveId, itemId: item.id };
+    return _folderItem;
+  }
+
+  window.acmsAuth = {
+    isSignedIn: () => !!_account,
+    getMe: async () => {
+      await initPromise;
+      if (!_account) return null;
+      return { email: (_account.username || '').toLowerCase(), name: _account.name };
+    },
+    signIn: async () => {
+      await initPromise;
+      const r = await pca.loginPopup({ scopes: C.scopes, prompt: 'select_account' });
+      _account = r.account;
+      return _account;
+    },
+    signOut: async () => {
+      await initPromise;
+      await pca.logoutPopup({ account: _account });
+      _account = null;
+    },
+  };
+
+  window.acmsGraph = {
+    listProjects: async () => {
+      const f = await getFolderItem();
+      const r = await graph('/drives/' + f.driveId + '/items/' + f.itemId + '/children?$top=200');
+      return (r.value || [])
+        .filter(x => x.file && x.name.toLowerCase().endsWith('.json'))
+        .map(x => ({ id: x.id, name: x.name, modified: x.lastModifiedDateTime, size: x.size }));
+    },
+    loadProject: async (fileId) => {
+      const f = await getFolderItem();
+      const r = await graph('/drives/' + f.driveId + '/items/' + fileId + '/content');
+      return typeof r === 'string' ? JSON.parse(r) : r;
+    },
+    saveProject: async (fileId, json) => {
+      const f = await getFolderItem();
+      await graph('/drives/' + f.driveId + '/items/' + fileId + '/content', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(json),
+      });
+    },
+    createProject: async (fileName, json) => {
+      const f = await getFolderItem();
+      const url = '/drives/' + f.driveId + '/items/' + f.itemId + ':/' + encodeURIComponent(fileName) + ':/content';
+      const r = await graph(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(json),
+      });
+      return r;
+    },
+    getFolderItem,
+  };
+})();
+</script>
+
 <script>
 /* ----------- Tiny IndexedDB key/value wrapper (no deps) -----------
    Exposed as window.idbGet(key) / window.idbSet(key, val) / window.idbDel(key) / window.idbKeys()
@@ -2218,25 +2373,71 @@ const isOverdue = (task) => task.due && task.status !== 'done' && new Date(task.
 const uid = () => 'r_' + Math.random().toString(36).slice(2, 9);
 
 // ---------- Storage ----------
+// When a project is loaded from OneDrive we keep its file id on window so saves know where to go.
+window.ACMS_CURRENT_PROJECT = null; // { fileId, fileName }
+
+// For viewer mode: scrub all cost-sensitive fields from a loaded project so they
+// can't be recovered via DevTools. The app also hides the costing UI but this is
+// the data-layer guarantee.
+function stripCostsForViewer(s) {
+  if (!s || typeof s !== 'object') return s;
+  const out = JSON.parse(JSON.stringify(s));
+  out.hideCosting = true;
+  if (Array.isArray(out.resources)) {
+    out.resources = out.resources.map(r => ({
+      id: r.id, role: r.role, name: r.name, hrsPerDay: r.hrsPerDay,
+      blackouts: r.blackouts || [],
+      assignedMonoliths: r.assignedMonoliths || [],
+      availableFrom: r.availableFrom, availableAfter: r.availableAfter,
+      linkedTo: r.linkedTo, external: !!r.external,
+      // OMITTED for viewers: rate, costRate, salaryMonthly, salaryUsd
+    }));
+  }
+  delete out.markups;
+  delete out.invoicing;
+  if (out.costingData) delete out.costingData;
+  if (out.schema && Array.isArray(out.schema.roles)) {
+    out.schema.roles = out.schema.roles.map(r => ({ id:r.id, label:r.label, short:r.short, color:r.color /* rate stripped */ }));
+  }
+  return out;
+}
+
 async function loadState() {
-  // Priority: IndexedDB → migrate from localStorage → artifact runtime → null
-  // (iOS Safari evicts localStorage after ~7 days of inactivity, so IDB is the canonical store.)
+  // 1) If a project was selected via the picker, use the OneDrive copy as the canonical store.
+  const proj = window.ACMS_CURRENT_PROJECT;
+  if (proj && window.acmsGraph && window.ACMS_AUTH_ENABLED) {
+    try {
+      const remote = await window.acmsGraph.loadProject(proj.fileId);
+      if (remote) {
+        // Cache locally for offline and quick re-loads
+        try { if (window.idbSet) await window.idbSet('proj:' + proj.fileId, JSON.stringify(remote)); } catch (_) {}
+        // Viewer mode: strip cost-sensitive fields before returning
+        return window.ACMS_IS_EDITOR ? remote : stripCostsForViewer(remote);
+      }
+    } catch (e) {
+      console.warn('graph load failed, falling back to local cache', e);
+      try {
+        const cached = window.idbGet ? await window.idbGet('proj:' + proj.fileId) : null;
+        if (cached) return typeof cached === 'string' ? JSON.parse(cached) : cached;
+      } catch (_) {}
+    }
+  }
+  // 2) Fallback: IndexedDB (offline / local-dev mode)
   try {
     if (typeof window.idbGet === 'function') {
       const fromIdb = await window.idbGet(STORAGE_KEY);
       if (fromIdb) return typeof fromIdb === 'string' ? JSON.parse(fromIdb) : fromIdb;
     }
   } catch (e) { console.warn('idb load fail', e); }
+  // 3) localStorage migration (one-time)
   try {
     const ls = localStorage.getItem(STORAGE_KEY);
     if (ls) {
-      // One-time migration: copy localStorage payload into IDB so it survives Safari eviction
-      if (typeof window.idbSet === 'function') {
-        try { await window.idbSet(STORAGE_KEY, ls); } catch (_) {}
-      }
+      if (typeof window.idbSet === 'function') { try { await window.idbSet(STORAGE_KEY, ls); } catch (_) {} }
       return JSON.parse(ls);
     }
   } catch (e) { console.warn('ls load fail', e); }
+  // 4) Artifact runtime
   try {
     if (typeof window.storage !== 'undefined') {
       const r = await window.storage.get('arena_gate_state', true);
@@ -2247,42 +2448,39 @@ async function loadState() {
 }
 async function saveState(state) {
   const json = JSON.stringify(state);
-  // Primary: IndexedDB
-  try {
-    if (typeof window.idbSet === 'function') {
-      await window.idbSet(STORAGE_KEY, json);
+  const proj = window.ACMS_CURRENT_PROJECT;
+  // 1) Save to OneDrive if a project is selected and the user is the editor
+  if (proj && window.acmsGraph && window.ACMS_AUTH_ENABLED && window.ACMS_IS_EDITOR) {
+    try {
+      await window.acmsGraph.saveProject(proj.fileId, state);
+    } catch (e) {
+      console.warn('graph save failed (offline?). Cached locally.', e);
     }
-  } catch (e) { console.error('idb save fail', e); }
-  // Mirror to localStorage (best-effort, helps quick reloads & older browsers)
+    // Always cache locally so we can read back offline
+    try { if (window.idbSet) await window.idbSet('proj:' + proj.fileId, json); } catch (_) {}
+    return;
+  }
+  // 2) Local-only save (no project selected, or viewer mode)
+  try { if (window.idbSet) await window.idbSet(STORAGE_KEY, json); } catch (e) { console.error('idb save fail', e); }
   try { localStorage.setItem(STORAGE_KEY, json); } catch (_) {}
-  // Artifact runtime if available
-  try {
-    if (typeof window.storage !== 'undefined') {
-      await window.storage.set('arena_gate_state', json, true);
-    }
-  } catch (_) {}
+  try { if (typeof window.storage !== 'undefined') await window.storage.set('arena_gate_state', json, true); } catch (_) {}
 }
 
 // ---------- Default state ----------
 function defaultResources() {
-  // Two rates per resource:
-  //   rate     = BID rate (what we charge the client; matches Excel proposal rates)
-  //   costRate = COST rate (what we actually pay — derived from salary or external invoice)
-  //
-  // Salaries: Nour/Mohamad/Ibrahim/Alaa = USD 2000/month internal cost
-  //   USD 2000 × 3.6725 = AED 7345/month  →  AED 7345 ÷ (22 × 9 hrs) ≈ AED 37.10/hr
-  // Batoul is external — bid = cost = AED 57.512/hr (we pay her what we charge for her).
-  // Ali (BIM+PM) — no salary provided; cost defaulted to bid rate (zero margin until set).
-  const salaryAed = 2000 * 3.6725;
-  const hourlyEng = +(salaryAed / (22 * 9)).toFixed(3); // 37.10
+  // SANITISED PLACEHOLDER POOL — used only for local development / first-run fallback.
+  // The real, production resource list (with names and salaries) lives in the Arena.json
+  // file on the private OneDrive folder; the deployed app loads it from there after sign-in.
+  // Bid rates here are the proposal rates from Excel sheet 4 (already client-visible).
+  // costRate defaults to bid rate (zero margin until the editor sets it).
   return [
-    { id: uid(), role: 'shop', name: 'Batoul',  hrsPerDay: 9, rate: 57.512, costRate: 57.512,   blackouts: [], external: true },
-    { id: uid(), role: 'eng',  name: 'Nour',    hrsPerDay: 9, rate: 40,     costRate: hourlyEng, blackouts: [], salaryMonthly: salaryAed, salaryUsd: 2000 },
-    { id: uid(), role: 'eng',  name: 'Mohamad', hrsPerDay: 9, rate: 40,     costRate: hourlyEng, blackouts: [], salaryMonthly: salaryAed, salaryUsd: 2000 },
-    { id: uid(), role: 'eng',  name: 'Ibrahim', hrsPerDay: 9, rate: 40,     costRate: hourlyEng, blackouts: [], salaryMonthly: salaryAed, salaryUsd: 2000 },
-    { id: uid(), role: 'se',   name: 'Alaa',    hrsPerDay: 9, rate: 100,    costRate: hourlyEng, blackouts: [], salaryMonthly: salaryAed, salaryUsd: 2000 },
-    { id: uid(), role: 'bim',  name: 'Ali',     hrsPerDay: 9, rate: 40,     costRate: 40,        blackouts: [] },
-    { id: uid(), role: 'res',  name: 'Resident Eng', hrsPerDay: 9, rate: 150, costRate: 150,    blackouts: [] },
+    { id: uid(), role: 'shop', name: 'DM',  hrsPerDay: 9, rate: 57.512, costRate: 57.512, blackouts: [] },
+    { id: uid(), role: 'eng',  name: 'E1',  hrsPerDay: 9, rate: 40,     costRate: 40,     blackouts: [] },
+    { id: uid(), role: 'eng',  name: 'E2',  hrsPerDay: 9, rate: 40,     costRate: 40,     blackouts: [] },
+    { id: uid(), role: 'eng',  name: 'E3',  hrsPerDay: 9, rate: 40,     costRate: 40,     blackouts: [] },
+    { id: uid(), role: 'se',   name: 'SE',  hrsPerDay: 9, rate: 100,    costRate: 100,    blackouts: [] },
+    { id: uid(), role: 'bim',  name: 'BIM', hrsPerDay: 9, rate: 40,     costRate: 40,     blackouts: [] },
+    { id: uid(), role: 'res',  name: 'RES', hrsPerDay: 9, rate: 150,    costRate: 150,    blackouts: [] },
   ];
 }
 
@@ -2535,25 +2733,14 @@ function App() {
 
   useEffect(() => { (async () => {
     const loaded = await loadState();
-    // Auto-migrate: if saved resources still use the old placeholder names (DM, E1..E4, SE, BIM+PM),
-    // upgrade them to the named team while preserving everything else.
-    const OLD_PLACEHOLDERS = new Set(['DM','E1','E2','E3','E4','SE','BIM+PM']);
-    let migratedResources = null;
-    if (loaded && loaded.resources && loaded.resources.length) {
-      const allOld = loaded.resources.every(r => OLD_PLACEHOLDERS.has(r.name));
-      if (allOld) migratedResources = defaultResources();
-    }
     // Merge saved state with defaults so older saves don't break a newer schema
     const merged = loaded ? {
       ...DEFAULT_STATE,
       ...loaded,
       project: { ...DEFAULT_STATE.project, ...(loaded.project || {}) },
-      resources: migratedResources
-        || ((loaded.resources && loaded.resources.length) ? loaded.resources : defaultResources()),
+      resources: (loaded.resources && loaded.resources.length) ? loaded.resources : defaultResources(),
       monoliths: (loaded.monoliths && loaded.monoliths.length) ? loaded.monoliths : MONOLITH_DATA,
       overrides: loaded.overrides || {},
-      // Ensure every resource has a blackouts array (older saves predate the field)
-      ...(loaded.resources ? {} : {}),
     } : DEFAULT_STATE;
     // Backfill blackouts and rate on any resource missing them
     merged.resources = merged.resources.map(r => ({
@@ -2561,39 +2748,17 @@ function App() {
       rate: ROLE_MAP[r.role]?.rate ?? 0,
       ...r
     }));
-    // Auto-apply salaries (cost rate) and restore bid rates for the named team
-    const TEAM_SALARIED = new Set(['Nour','Mohamad','Ibrahim','Alaa']);
-    const salaryAed = 2000 * 3.6725;
-    const hourlyEng = +(salaryAed / (22 * 9)).toFixed(3);
+    // Backfill costRate where missing — use bid rate as default (zero margin until set)
     const ROLE_BID = { shop: 57.512, eng: 40, se: 100, bim: 40, res: 150 };
     merged.resources = merged.resources.map(r => {
-      let next = { ...r };
-      // Backfill costRate where missing
-      if (next.costRate == null) {
-        if (TEAM_SALARIED.has(next.name)) next.costRate = hourlyEng;
-        else next.costRate = ROLE_BID[next.role] ?? next.rate ?? 40;
-      }
-      // Apply salary metadata to salaried staff if not yet set
-      if (TEAM_SALARIED.has(next.name) && next.salaryMonthly == null) {
-        next.salaryMonthly = salaryAed; next.salaryUsd = 2000; next.costRate = hourlyEng;
-      }
-      // Restore the bid rate to role default (it was incorrectly written to salary value previously)
-      if (TEAM_SALARIED.has(next.name) && Math.abs((next.rate ?? 0) - hourlyEng) < 0.5) {
-        next.rate = ROLE_BID[next.role] ?? 40;
-      }
-      if (next.name === 'Batoul' && next.external == null) next.external = true;
+      const next = { ...r };
+      if (next.costRate == null) next.costRate = ROLE_BID[next.role] ?? next.rate ?? 40;
       return next;
     });
     // Ensure holidays array exists
     if (!Array.isArray(merged.holidays)) merged.holidays = DEFAULT_STATE.holidays;
     setState(merged);
     setLoading(false);
-    if (migratedResources) {
-      setTimeout(() => {
-        setToast('Team names updated to Batoul / Nour / Mohamad / Ibrahim / Alaa / Ali');
-        setTimeout(() => setToast(''), 3500);
-      }, 200);
-    }
   })(); }, []);
 
   useEffect(() => {
@@ -4988,9 +5153,112 @@ function TaskModal({ task, onSave, onClose }) {
   );
 }
 
-// ---------- Mount ----------
+// ---------- Mount with auth gate ----------
 const root = createRoot(document.getElementById('root'));
-root.render(h(App));
+
+function mountApp() {
+  root.render(h(App));
+}
+
+// Gate: in deployed (HTTPS) mode require sign-in + project selection.
+// In local/file:// mode mount immediately with embedded data.
+if (!window.ACMS_AUTH_ENABLED) {
+  mountApp();
+} else {
+  root.render(h(GateScreen, { onReady: mountApp }));
+}
+
+// ---------- Sign-in & Project Picker (deployed mode) ----------
+function GateScreen({ onReady }) {
+  const [phase, setPhase] = useState('check');   // check | login | picker | loading | error
+  const [user,  setUser]  = useState(null);
+  const [files, setFiles] = useState([]);
+  const [err,   setErr]   = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await window.acmsAuth.getMe();
+        if (me) { setUser(me); setPhase('picker'); await refresh(); }
+        else setPhase('login');
+      } catch (e) { setErr(String(e)); setPhase('error'); }
+    })();
+  }, []);
+
+  const refresh = async () => {
+    try {
+      const list = await window.acmsGraph.listProjects();
+      setFiles(list); setPhase('picker');
+    } catch (e) { setErr(String(e)); setPhase('error'); }
+  };
+  const doLogin = async () => {
+    setPhase('loading');
+    try { const acc = await window.acmsAuth.signIn(); setUser({ email: (acc.username||'').toLowerCase(), name: acc.name }); await refresh(); }
+    catch (e) { setErr(String(e)); setPhase('error'); }
+  };
+  const open = async (file) => {
+    setPhase('loading');
+    window.ACMS_CURRENT_PROJECT = { fileId: file.id, fileName: file.name };
+    window.ACMS_IS_EDITOR = !!user && user.email === (window.ACMS_CONFIG.editorEmail || '').toLowerCase();
+    onReady();
+  };
+
+  const wrap = { padding: '40px 24px', maxWidth: '640px', margin: '0 auto', fontFamily: 'var(--mono)' };
+
+  if (phase === 'check' || phase === 'loading') {
+    return h('div', { style: wrap }, h('div', { className: 'loading' }, 'Connecting'));
+  }
+  if (phase === 'login') {
+    return h('div', { style: wrap },
+      h('div', { className: 'brand-mark', style: { fontSize: '28px', marginBottom: '8px' } }, 'ACMS Tracker'),
+      h('div', { className: 'brand-sub', style: { marginBottom: '32px' } }, 'Sign in with your ACMSTRUCTURES account'),
+      h('button', { className: 'btn btn-primary', style: { padding: '12px 24px', fontSize: '13px' },
+        onClick: doLogin }, 'Sign in with Microsoft')
+    );
+  }
+  if (phase === 'error') {
+    return h('div', { style: wrap },
+      h('div', { className: 'brand-mark', style: { fontSize: '24px', color: 'var(--accent)' } }, '⚠ Error'),
+      h('pre', { style: { whiteSpace:'pre-wrap', color:'var(--ink-soft)', marginTop:'12px', fontSize:'11px' } }, err),
+      h('button', { className: 'btn btn-ghost', style: { marginTop: '20px' }, onClick: () => location.reload() }, 'Retry')
+    );
+  }
+  // phase === 'picker'
+  const isEditor = !!user && user.email === (window.ACMS_CONFIG.editorEmail || '').toLowerCase();
+  return h('div', { style: wrap },
+    h('div', { style: { display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'16px' } },
+      h('div', null,
+        h('div', { className: 'brand-mark', style: { fontSize: '24px' } }, 'ACMS Tracker'),
+        h('div', { className: 'brand-sub' }, 'Pick a project · ' + user.email +
+          (isEditor ? ' · EDITOR' : ' · VIEWER (read-only)'))
+      ),
+      h('button', { className: 'btn btn-ghost', style: { fontSize:'10px', padding:'5px 10px' },
+        onClick: async () => { await window.acmsAuth.signOut(); location.reload(); } }, 'Sign out')
+    ),
+    files.length === 0 && h('div', {
+      style: { padding: '40px 20px', textAlign: 'center', border: '1px dashed var(--rule)', color: 'var(--ink-mute)' }
+    },
+      h('div', { style: { marginBottom: '12px' } }, 'No projects in the OneDrive folder yet.'),
+      isEditor && h('div', null,
+        h('p', { style: { fontSize:'11px', marginBottom:'12px' } }, 'Upload Arena.json to your shared OneDrive folder, then click Refresh.')
+      )
+    ),
+    h('div', { style: { display:'flex', flexDirection:'column', gap:'8px', marginTop:'16px' } },
+      files.map(f => h('button', { key: f.id,
+        onClick: () => open(f),
+        style: { textAlign:'left', padding:'14px 18px', background:'var(--paper)', border:'1px solid var(--rule)',
+          color:'var(--ink)', cursor:'pointer', borderLeft: '3px solid var(--info)' } },
+        h('div', { style: { fontFamily: 'var(--display)', fontSize: '17px', fontWeight: 500 } },
+          (f.name || '').replace(/\.json$/i, '')),
+        h('div', { style: { fontSize: '10px', color: 'var(--ink-mute)', marginTop: '4px' } },
+          'Modified ' + new Date(f.modified).toLocaleString('en-GB') + ' · ' + Math.round(f.size/1024) + ' KB')
+      ))
+    ),
+    h('div', { style: { marginTop:'18px', display:'flex', gap:'8px' } },
+      h('button', { className: 'btn btn-ghost', onClick: refresh, style: { fontSize:'10px' } }, 'Refresh list')
+    )
+  );
+}
 
 </script>
 </body>

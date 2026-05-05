@@ -1,9 +1,17 @@
 /**
  * ACMS Arena Tracker — Service Worker
- * Strategy: cache-first with runtime caching of cross-origin (esm.sh, fonts) assets.
+ * Strategy: cache-first with runtime caching of cross-origin static assets
+ * (esm.sh, fonts, MSAL CDN). Auth + Graph API endpoints are network-only.
  * Bump CACHE_NAME below to force clients to re-precache.
  */
-const CACHE_NAME = 'arena-gate-v1';
+const CACHE_NAME = 'arena-gate-v2';
+// Hosts whose responses must NEVER be cached (auth, dynamic data API)
+const NO_CACHE_HOSTS = [
+  'login.microsoftonline.com',
+  'login.live.com',
+  'graph.microsoft.com',
+  'sharepoint.com',
+];
 const PRECACHE_URLS = [
   './',
   './Arena_Gate_II_Tracker.html',
@@ -39,6 +47,9 @@ self.addEventListener('fetch', (event) => {
   // Only handle http(s) — skip chrome-extension, etc.
   const url = new URL(req.url);
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+  // Auth + Graph requests bypass the cache entirely
+  if (NO_CACHE_HOSTS.some((h) => url.hostname === h || url.hostname.endsWith('.' + h))) return;
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);

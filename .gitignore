@@ -13,6 +13,10 @@ Thumbs.db
 # Older template — keep local, don't deploy
 ACMS_Project_Tracker.html
 
+# Real project data — lives in private OneDrive, never commit to public repo
+Arena.json
+*.acms-project.json
+
 # Build artefacts that the build_arena.py script may emit
 *.pyc
 __pycache__/
