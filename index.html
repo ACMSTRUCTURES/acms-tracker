@@ -2900,16 +2900,22 @@ async function loadState() {
     try {
       const remote = await window.acmsGraph.loadProject(proj.fileId);
       if (remote) {
-        // Cache locally for offline and quick re-loads
-        try { if (window.idbSet) await window.idbSet('proj:' + proj.fileId, JSON.stringify(remote)); } catch (_) {}
-        // Viewer mode: strip cost-sensitive fields before returning
-        return window.ACMS_IS_EDITOR ? remote : stripCostsForViewer(remote);
+        // Apply role-based stripping first so the cache only ever stores what
+        // this role is allowed to see — even an offline-only viewer can't recover
+        // cost data via DevTools / IndexedDB.
+        const visible = window.ACMS_IS_EDITOR ? remote : stripCostsForViewer(remote);
+        try { if (window.idbSet) await window.idbSet('proj:' + proj.fileId, JSON.stringify(visible)); } catch (_) {}
+        return visible;
       }
     } catch (e) {
       console.warn('graph load failed, falling back to local cache', e);
       try {
         const cached = window.idbGet ? await window.idbGet('proj:' + proj.fileId) : null;
-        if (cached) return typeof cached === 'string' ? JSON.parse(cached) : cached;
+        if (cached) {
+          const parsed = typeof cached === 'string' ? JSON.parse(cached) : cached;
+          // Strip again on read in case the cache predates this role-strip logic
+          return window.ACMS_IS_EDITOR ? parsed : stripCostsForViewer(parsed);
+        }
       } catch (_) {}
     }
   }
