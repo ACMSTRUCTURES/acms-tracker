@@ -948,11 +948,87 @@
     .project-header { grid-template-columns: 1fr; }
   }
   @media (max-width: 640px) {
+    body { font-size: 12px; }
     .kanban { grid-template-columns: 1fr; }
-    .topbar { padding: 12px 16px; flex-wrap: wrap; }
-    .project-header, .view-bar, .workspace { padding-left: 16px; padding-right: 16px; }
-    .project-title-input { font-size: 28px; }
-    .filter-input { width: 140px; }
+    .topbar { padding: 10px 14px; flex-wrap: wrap; gap: 10px; }
+    .topbar-spacer { display: none; }
+    .meta-pill { font-size: 9px; padding: 4px 8px; }
+    .project-header { padding: 18px 14px 14px; gap: 12px; }
+    .view-bar { padding: 10px 12px; gap: 6px; flex-wrap: wrap; }
+    .workspace { padding: 14px 12px 100px; }
+    .project-title-input { font-size: 22px; padding: 0; }
+    .project-meta { gap: 14px; flex-wrap: wrap; }
+    .meta-block input.meta-value, .meta-block .meta-value { font-size: 12px; }
+    .stats-cluster { grid-template-columns: repeat(2, 1fr); gap: 14px; text-align: left; }
+    .stat-num { font-size: 22px; }
+
+    .filter-input { width: 100%; min-width: 0; }
+    .group-select { font-size: 11px; padding: 6px 8px; min-width: 0; }
+    .view-tab { padding: 6px 10px; font-size: 10px; letter-spacing: 0.12em; }
+    .btn { padding: 6px 10px; font-size: 10px; letter-spacing: 0.08em; }
+
+    /* Tables — wrap in horizontal scroller */
+    .list-wrap, .cost-section, .res-wrap > table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .cost-table { min-width: 560px; }
+    table { min-width: 560px; }
+    th, td { padding: 8px 8px; font-size: 11px; }
+
+    /* Resource rows — switch to a vertical card-style layout */
+    .res-row {
+      grid-template-columns: 24px 1fr auto;
+      grid-template-areas:
+        "id name actions"
+        "id sub  sub"
+        "id stats stats";
+      row-gap: 4px;
+    }
+    .res-row > .res-id { grid-area: id; }
+    .res-row > div:nth-child(2) { grid-area: name; min-width: 0; }
+    .res-row > .icon-btn { grid-area: actions; }
+    /* Bid + cost rate, hours, available, util — stack as a flex row in remaining column */
+    .res-row > .cost-cell, .res-row > .res-stat {
+      grid-area: stats;
+      display: inline-flex;
+    }
+    body.hide-costing .res-row { grid-template-columns: 24px 1fr auto; }
+
+    .res-summary, .cost-summary, .res-summary { grid-template-columns: repeat(2, 1fr) !important; gap: 12px; padding: 12px 14px; }
+    .cost-summary-stat .num, .res-summary-stat .num { font-size: 18px; }
+
+    /* Feasibility banner — stack rows */
+    .feasibility-banner { margin: 0 12px; padding: 10px 12px; }
+    .fb-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .fb-mini { flex-wrap: wrap; }
+    .fb-rec { flex-direction: column; align-items: stretch; gap: 8px; }
+    .fb-apply { width: 100%; }
+
+    /* Kanban cards — slightly tighter */
+    .card { padding: 10px; }
+
+    /* Gantt left column narrower */
+    .gantt-grid { grid-template-columns: 140px 1fr !important; }
+    .gantt-row-label, .gantt-left-header { padding: 8px 10px; font-size: 11px; }
+
+    /* Calendar — single column day cells get tiny; let them be */
+    .cal-day { min-height: 70px; padding: 4px; }
+    .cal-task { font-size: 9px; padding: 1px 3px; }
+    .cal-title { font-size: 16px; }
+
+    /* Modal full-width on small screens */
+    .modal { width: 96%; max-width: 96%; }
+    .modal-body { padding: 14px; }
+    .modal-head { padding: 14px 14px 10px; }
+    .modal-head h2 { font-size: 16px; }
+
+    /* Panel chips — wrap nicely */
+    .cost-section { padding: 12px 14px; }
+    .cost-section-head { font-size: 14px; }
+  }
+  @media (max-width: 420px) {
+    /* Even tighter for iPhone SE / Mini */
+    .stats-cluster { grid-template-columns: repeat(2, 1fr); }
+    .gantt-grid { grid-template-columns: 110px 1fr !important; }
+    .project-title-input { font-size: 18px; }
   }
 
   /* ---------- Resources View ---------- */
