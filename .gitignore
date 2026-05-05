@@ -1,0 +1,18 @@
+# Local tooling — not part of the deployed PWA
+Input/
+build_arena.py
+splice.py
+check.mjs
+
+# Editor / OS junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Older template — keep local, don't deploy
+ACMS_Project_Tracker.html
+
+# Build artefacts that the build_arena.py script may emit
+*.pyc
+__pycache__/
