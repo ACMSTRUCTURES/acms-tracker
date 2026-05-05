@@ -5743,6 +5743,13 @@ function TaskModal({ task, onSave, onClose }) {
 const root = createRoot(document.getElementById('root'));
 
 function mountApp() {
+  // Tag the body with the active role immediately so DevTools diagnostics work
+  // even before React's first useEffect runs.
+  const role = window.ACMS_IS_EDITOR ? 'editor'
+    : window.ACMS_IS_SCHEDULE_EDITOR ? 'schedule'
+    : window.ACMS_AUTH_ENABLED ? 'viewer' : 'local';
+  document.body.dataset.acmsRole = role;
+  console.log('[ACMS] mountApp · role=' + role + ' · email=' + (window.ACMS_USER && window.ACMS_USER.email || 'none'));
   root.render(h(App));
 }
 
