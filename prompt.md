@@ -128,6 +128,26 @@ Batoul (external), Ali (BIM+PM, his own access), Resident Engineer if real. Deci
 
 With one of the engineers (Nour / Mohamad / Ibrahim / Alaa) — confirm cyan badge, restricted tabs, edit access works on Gantt drag + List inline progress.
 
+### 6. Notifications (Teams / email)
+
+Three notification triggers a resource should receive:
+
+| Trigger | When | Channel |
+|---|---|---|
+| **Task assigned** | Editor pins a monolith to a resource (or scheduler auto-assigns the first time) | Teams DM and/or email — "You've been assigned M01 — 3D Model, due 09 Jun, 241 hours." |
+| **Deadline approaching** | 3 working days before due date AND task is not `done` | Teams DM — "M01 — 3D Model is due in 3 working days. Current progress: 60%." |
+| **Deadline missed** | Day after due date, task still not `done` | Teams DM — "M01 — 3D Model was due yesterday. Mark complete or update progress." |
+
+**Implementation options:**
+
+- **Power Automate (recommended for ACMS)** — scheduled flow runs daily, reads `Arena.json` from SharePoint, computes upcoming/missed deadlines per task, sends Teams adaptive card via Microsoft Graph. Zero new infrastructure; lives entirely in M365.
+- **Microsoft Graph from the app** — when editor saves, the app calls Graph `/teams/.../messages` to DM each affected resource. Simpler but only fires on save (no scheduled "3 days before" trigger).
+- **Hybrid** — app sends "task assigned" on save (immediate); Power Automate handles the time-based deadline reminders.
+
+**Data the notification needs:** task title, monolith, due date, owner email, current progress, app deep-link to that task. Owner email already on `task.ownerId`; app URL already known. Just add a `lastNotified: { taskId: timestamp }` map to project state to avoid spamming the same person.
+
+**Permissions:** Entra app needs `Chat.ReadWrite` (for Teams DMs) or `Mail.Send` (for emails) — admin consent required, you're already admin.
+
 ---
 
 ## How to make code changes
