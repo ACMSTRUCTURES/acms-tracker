@@ -4,7 +4,7 @@
  * (esm.sh, fonts, MSAL CDN). Auth + Graph API endpoints are network-only.
  * Bump CACHE_NAME below to force clients to re-precache.
  */
-const CACHE_NAME = 'arena-gate-v4';
+const CACHE_NAME = 'arena-gate-v5';
 // Hosts whose responses must NEVER be cached (auth, dynamic data API)
 const NO_CACHE_HOSTS = [
   'login.microsoftonline.com',

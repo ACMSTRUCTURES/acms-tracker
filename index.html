@@ -1338,6 +1338,191 @@
   }
   .group-select:focus, .num-input-inline:focus { outline: none; border-color: var(--ink); }
 
+  /* ============ THEME · PROFESSIONAL (drafting paper × modern dashboard) ============
+     Overrides the gamer/cyberpunk skin above. Restores ACMS branding:
+     warm off-white, charcoal ink, ACMS red accent, restful typography.
+     Kill all glows + scan lines + uppercase mono noise.
+  */
+  :root {
+    --bg: #f4f1ec;
+    --bg-grid: #e8e3d8;
+    --paper: #fbf9f5;
+    --ink: #1a1a1a;
+    --ink-soft: #4a4a4a;
+    --ink-mute: #8a8580;
+    --rule: #d9d2c7;
+    --rule-strong: #1a1a1a;
+    --accent: #c8341e;
+    --accent-soft: #e85a3d;
+    --ok: #2d5a3d;
+    --warn: #b8860b;
+    --info: #3b5998;
+    --neon-purple: #7c3aed;
+    --shadow: 0 1px 0 rgba(0,0,0,0.04), 0 8px 24px rgba(20,18,15,0.06);
+    --glow-cyan: none;
+    --glow-pink: none;
+    --glow-green: none;
+    --display: 'Fraunces', Georgia, serif;
+    --body: 'Inter Tight', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  body {
+    background: var(--bg) !important;
+    color: var(--ink) !important;
+    background-image:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) !important;
+    background-size: 32px 32px !important;
+    background-attachment: scroll !important;
+    letter-spacing: 0 !important;
+  }
+  body::before, body::after { content: none !important; }
+  ::selection { background: var(--accent); color: white; }
+  ::-webkit-scrollbar-thumb { background: var(--rule); border: 1px solid var(--rule); box-shadow: none !important; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-mute); box-shadow: none; }
+
+  /* Topbar */
+  .topbar { background: var(--paper); border-bottom: 1.5px solid var(--rule-strong); box-shadow: none; }
+  .brand-mark { color: var(--ink); text-shadow: none; text-transform: none; font-family: var(--display); font-weight: 600; letter-spacing: -0.02em; }
+  .brand-mark::before { color: var(--accent); text-shadow: none; animation: none; }
+  .brand-sub { color: var(--ink-mute); text-shadow: none; }
+  .meta-pill { background: var(--paper); color: var(--ink-soft); border-color: var(--rule); text-shadow: none; box-shadow: none; }
+  .meta-pill .dot { background: var(--ok); box-shadow: none; animation: none; }
+
+  /* Project header */
+  .project-title-input { color: var(--ink); text-shadow: none; text-transform: none; font-family: var(--display); font-weight: 500; letter-spacing: -0.025em; }
+  .meta-label { color: var(--ink-mute); }
+  .meta-value { color: var(--ink); }
+  .stat-num { color: var(--ink); text-shadow: none; font-family: var(--display); font-weight: 500; letter-spacing: -0.02em; }
+  .stat-label { color: var(--ink-mute); }
+
+  /* View bar + tabs */
+  .view-bar { background: var(--paper); border-bottom: 1px solid var(--rule); }
+  .view-tab { background: var(--paper); color: var(--ink-soft); border-color: var(--rule); }
+  .view-tab:hover { color: var(--ink); border-color: var(--ink); box-shadow: none; background: var(--bg); }
+  .view-tab.active { background: var(--ink); color: var(--paper); border-color: var(--ink); box-shadow: none; text-shadow: none; }
+  .filter-input, .group-select { background: var(--paper); border-color: var(--rule); color: var(--ink); }
+  .filter-input:focus, .group-select:focus { border-color: var(--ink); box-shadow: none; color: var(--ink); }
+
+  /* Buttons */
+  .btn { background: var(--paper); color: var(--ink); border-color: var(--ink); text-shadow: none; }
+  .btn:hover { background: var(--ink); color: var(--paper); box-shadow: none; }
+  .btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); box-shadow: none; }
+  .btn-primary:hover { background: var(--accent); border-color: var(--accent); }
+  .btn-ghost { border-color: var(--rule); color: var(--ink-soft); }
+  .btn-ghost:hover { border-color: var(--ink); color: var(--ink); box-shadow: none; background: var(--paper); }
+
+  /* Kanban */
+  .column { background: var(--paper); border-color: var(--rule); box-shadow: var(--shadow); }
+  .column.drag-over { border-color: var(--ink); background: #fff; box-shadow: var(--shadow); }
+  .col-title { color: var(--ink-soft); text-shadow: none; }
+  .col-count { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--rule); }
+  .card { background: var(--paper); border-color: var(--rule); }
+  .card:hover { border-color: var(--ink); box-shadow: var(--shadow); }
+  .tag-owner { background: var(--ink); color: var(--paper); border-color: var(--ink); box-shadow: none; }
+  .tag-overdue { background: var(--accent); color: white; border-color: var(--accent); box-shadow: none; }
+  .add-task { color: var(--ink-mute); border-color: var(--rule); }
+  .add-task:hover { border-color: var(--ink); color: var(--ink); box-shadow: none; }
+
+  /* List/tables */
+  .list-wrap { background: var(--paper); border-color: var(--rule); }
+  thead { background: var(--bg); border-bottom: 1.5px solid var(--ink); }
+  th { color: var(--ink-soft); }
+  th:hover { color: var(--ink); text-shadow: none; }
+  td { color: var(--ink); border-bottom-color: var(--rule); }
+  tbody tr:hover { background: rgba(0,0,0,0.025); }
+  .status-badge { background: var(--paper); }
+  .icon-btn { color: var(--ink-mute); }
+  .icon-btn:hover { color: var(--accent); background: var(--bg); }
+
+  /* Gantt */
+  .gantt-wrap { background: var(--paper); border-color: var(--rule); box-shadow: var(--shadow); }
+  .gantt-left { background: var(--paper); border-right: 1.5px solid var(--ink); }
+  .gantt-left-header { background: var(--bg); color: var(--ink-soft); border-bottom: 1.5px solid var(--ink); }
+  .gantt-row-label { background: var(--paper); color: var(--ink); }
+  .gantt-timeline-header { background: var(--bg); border-bottom: 1.5px solid var(--ink); }
+  .gantt-day { color: var(--ink-mute); border-right-color: var(--rule); }
+  .gantt-day.weekend { background: var(--bg-grid); }
+  .gantt-day .month-label { color: var(--ink); text-shadow: none; font-weight: 600; }
+  .gantt-row { background: repeating-linear-gradient(90deg, transparent, transparent 23px, var(--rule) 23px, var(--rule) 24px); }
+  .gantt-bar { box-shadow: 0 1px 0 rgba(0,0,0,0.15); border-radius: 2px; }
+  .gantt-bar:hover { filter: brightness(1.05); }
+  .gantt-today { background: var(--accent); box-shadow: none; }
+  .gantt-bar-shifted { box-shadow: 0 0 0 2px var(--accent), 0 1px 0 rgba(0,0,0,0.15) !important; }
+
+  /* Calendar */
+  .cal-wrap { background: var(--paper); border-color: var(--rule); box-shadow: var(--shadow); }
+  .cal-header { background: var(--bg); border-bottom: 1.5px solid var(--ink); }
+  .cal-title { color: var(--ink); text-shadow: none; text-transform: none; font-family: var(--display); font-weight: 500; letter-spacing: -0.02em; }
+  .cal-dow { background: var(--bg); color: var(--ink-mute); }
+  .cal-day { background: var(--paper); }
+  .cal-day.other-month { background: var(--bg); }
+  .cal-day.today { background: rgba(200,52,30,0.06); box-shadow: inset 0 0 0 1px var(--accent); }
+  .cal-day.today .cal-date { color: var(--accent); text-shadow: none; }
+  .cal-task { color: white; border-radius: 2px; }
+
+  /* Modal */
+  .modal-backdrop { background: rgba(20,18,15,0.5); backdrop-filter: blur(4px); }
+  .modal { background: var(--paper); border: 1.5px solid var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+  .modal-head { border-bottom: 1.5px solid var(--ink); }
+  .modal-head h2 { color: var(--ink); text-shadow: none; text-transform: none; font-family: var(--display); font-weight: 500; letter-spacing: -0.02em; }
+  .field input, .field select, .field textarea { background: var(--paper); border-color: var(--rule); color: var(--ink); }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--ink); box-shadow: none; }
+  .field label { color: var(--ink-soft); }
+
+  /* Toast */
+  .toast { background: var(--ink); color: var(--paper); border-left: 3px solid var(--accent); box-shadow: 0 8px 24px rgba(0,0,0,0.2); text-shadow: none; }
+
+  /* Empty state */
+  .empty-mark { color: var(--rule); text-shadow: none; }
+  .empty-title { color: var(--ink); text-shadow: none; text-transform: none; font-family: var(--display); }
+  .empty-sub { color: var(--ink-mute); }
+
+  /* Resources */
+  .res-summary { background: var(--paper); border: 1.5px solid var(--ink); box-shadow: var(--shadow); }
+  .res-summary-stat .num { color: var(--ink); text-shadow: none; font-family: var(--display); }
+  .res-summary-stat .lbl { color: var(--ink-mute); }
+  .res-role-card { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--role-color, var(--ink)); box-shadow: var(--shadow); }
+  .res-role-title { color: var(--ink); text-shadow: none; text-transform: none; font-family: var(--display); font-weight: 500; }
+  .res-role-meta { color: var(--ink-mute); }
+  .res-row:hover { background: var(--bg); border-color: var(--rule); }
+  .res-name-input { color: var(--ink); }
+  .res-stat { color: var(--ink-soft); }
+  .res-stat-warn { color: var(--accent); text-shadow: none; }
+
+  /* Costing + Panels (cost-section / cost-summary shared) */
+  .cost-summary { background: var(--paper); border: 1.5px solid var(--ink); box-shadow: var(--shadow); }
+  .cost-summary-stat .num { color: var(--ink); text-shadow: none; font-family: var(--display); }
+  .cost-summary-stat .lbl { color: var(--ink-mute); }
+  .cost-section { background: var(--paper); border: 1px solid var(--rule); box-shadow: var(--shadow); }
+  .cost-section-head { color: var(--ink); text-shadow: none; text-transform: none; font-family: var(--display); font-weight: 500; letter-spacing: -0.01em; }
+  .cost-table th { color: var(--ink-soft); border-bottom: 1.5px solid var(--ink); }
+  .cost-table td { color: var(--ink); border-bottom-color: var(--rule); }
+  .cost-table tbody tr:hover { background: var(--bg); }
+  .cost-total-row td { background: var(--bg); color: var(--ink); border-top: 1.5px solid var(--ink); }
+  .cost-subtotal-row td { background: rgba(200,52,30,0.04); color: var(--ink); }
+  .cost-final-row td {
+    background: var(--ink); color: var(--paper);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    box-shadow: none;
+    border-top: 2px solid var(--accent);
+  }
+  .group-row td { background: var(--bg); color: var(--ink-soft); text-shadow: none; border-top: 1.5px solid var(--ink); }
+  .gantt-group-label { background: var(--bg) !important; color: var(--ink-soft) !important; border-top: 1.5px solid var(--ink) !important; }
+
+  /* Feasibility banner */
+  .feasibility-banner { background: var(--paper); box-shadow: var(--shadow); }
+  .fb-ok { border-color: var(--ok); }
+  .fb-ok .fb-status { color: var(--ok); text-shadow: none; }
+  .fb-bad { animation: none; border-color: var(--accent); }
+  .fb-bad .fb-status { color: var(--accent); text-shadow: none; }
+  .fb-chip { color: var(--ink-soft); background: var(--bg); border-color: var(--rule); }
+  .fb-chip strong { color: var(--ink); }
+  .fb-chip-hot { border-color: var(--accent); color: var(--accent); box-shadow: none; }
+  .fb-rec-text strong { color: var(--accent); text-shadow: none; }
+  .fb-rec-label { color: var(--ink); text-shadow: none; }
+  .fb-apply { background: var(--ok); color: white; border-color: var(--ok); box-shadow: none; }
+  .fb-apply:hover { background: #1e4530; border-color: #1e4530; box-shadow: none; }
 </style>
 </head>
 <body>
@@ -1643,14 +1828,14 @@ const ROLES = [
 ];
 const ROLE_MAP = Object.fromEntries(ROLES.map(r => [r.id, r]));
 
-// Service-type colors (used in Kanban cards, Gantt, and elsewhere)
+// Service-type colors — muted to sit on the drafting-paper theme
 const SERVICE_COLORS = {
-  'Shop Drw':    '#9ab3c9',
-  '3D Model':    '#00f0ff',
-  'Struct Eng':  '#ffcc33',
-  'Prod Drw':    '#39ff7a',
-  'Install Drw': '#b14bff',
-  'BIM + PM':    '#ff2d6f',
+  'Shop Drw':    '#8a8580',  // warm grey
+  '3D Model':    '#3b5998',  // info blue
+  'Struct Eng':  '#b8860b',  // warn ochre
+  'Prod Drw':    '#2d5a3d',  // ok green
+  'Install Drw': '#7c3aed',  // purple
+  'BIM + PM':    '#c8341e',  // accent red
 };
 const SERVICE_LABELS = {
   shop: 'Shop Drw', td: '3D Model', se: 'Struct Eng',
