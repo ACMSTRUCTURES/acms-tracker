@@ -1523,6 +1523,71 @@
   .fb-rec-label { color: var(--ink); text-shadow: none; }
   .fb-apply { background: var(--ok); color: white; border-color: var(--ok); box-shadow: none; }
   .fb-apply:hover { background: #1e4530; border-color: #1e4530; box-shadow: none; }
+
+  /* ============ Polish pass ============ */
+  /* Zebra rows on data tables — quieter than full hover, easier to scan long lists */
+  tbody tr:nth-child(even) { background: rgba(0,0,0,0.012); }
+  .cost-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.012); }
+  /* Total + final rows must override the zebra */
+  .cost-total-row td, .cost-subtotal-row td, .cost-final-row td, .group-row td { background: var(--bg); }
+  .cost-final-row td { background: var(--ink) !important; color: var(--paper); }
+  .cost-subtotal-row td { background: rgba(200,52,30,0.04) !important; }
+
+  /* Refine numeric columns: use the mono font + tabular figures so digits align */
+  td[style*="var(--mono)"], .res-stat, .stat-num,
+  .cost-summary-stat .num, .res-summary-stat .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Tighten meta block typography */
+  .meta-label { font-size: 9px; letter-spacing: 0.16em; }
+  .meta-value { font-size: 13px; }
+
+  /* Slightly more breathing room in section heads */
+  .cost-section-head, .res-role-title { font-size: 17px; line-height: 1.2; }
+
+  /* Brand: small wordmark next to the mark */
+  .brand-mark { font-size: 22px; }
+  .brand-mark::before { font-size: 10px; margin-right: 8px; }
+  .brand-sub { font-weight: 500; }
+
+  /* Cards (kanban) — slight inner shadow for paper-like depth */
+  .card { box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
+  .card:hover { box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
+
+  /* Status badges + tags — soften (drafting paper aesthetic) */
+  .status-badge { font-weight: 600; }
+  .tag { background: var(--paper); }
+
+  /* Modal body: more comfortable spacing */
+  .modal-body { padding: 22px 24px; gap: 16px; }
+
+  /* Gantt — subtle alternating row tint */
+  .gantt-row:nth-child(even) { background: rgba(0,0,0,0.015); }
+
+  /* Calendar — restful "today" highlight */
+  .cal-day.today { background: rgba(200,52,30,0.05); box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+  /* Section dividers between consecutive cost-section blocks */
+  .cost-section + .cost-section { margin-top: 16px; }
+  .res-role-card + .res-role-card { margin-top: 14px; }
+
+  /* Topbar refinements */
+  .topbar { padding: 14px 28px; gap: 14px; }
+  .meta-pill {
+    font-weight: 500;
+    border-radius: 999px;
+    padding: 4px 10px;
+    background: rgba(45,90,61,0.06);
+    border-color: rgba(45,90,61,0.3);
+    color: var(--ok);
+  }
+  .meta-pill .dot { background: var(--ok); }
+
+  /* Ensure all headings + numbers are tight */
+  .stat-num { font-size: 32px; line-height: 1; letter-spacing: -0.025em; }
+  .res-summary-stat .num, .cost-summary-stat .num { font-size: 26px; line-height: 1.05; letter-spacing: -0.02em; }
 </style>
 </head>
 <body>
