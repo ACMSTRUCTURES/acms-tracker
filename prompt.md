@@ -10,7 +10,7 @@ A deployed Progressive Web App for ACMS Structures' internal project planning. C
 
 **Live URL:** `https://acmstructures.github.io/acms-tracker/`
 **Repo:** `ACMSTRUCTURES/acms-tracker` (public, GitHub Pages from `main` / root)
-**Local dir:** `C:\Users\AliJibawy\OneDrive - ACMSTRUCTURES\ACMstructures\General Information\R&D\ACM-planning\`
+**Local dir:** `C:\Users\AliJibawy\dev\acms-planner\`
 
 ---
 
